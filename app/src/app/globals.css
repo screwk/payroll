@@ -1,0 +1,286 @@
+@import "tailwindcss";
+
+/* PAYROLL - Lightweight CSS */
+
+@theme inline {
+  /* Colors - Premium Orange Theme */
+  --color-orange-50: #FFF5F0;
+  --color-orange-100: #FFE6D9;
+  --color-orange-200: #FFCBB3;
+  --color-orange-300: #FFAB85;
+  --color-orange-400: #FF8552;
+  --color-orange-500: #FF4D00;
+  --color-orange-600: #CC3D00;
+  --color-orange-700: #992E00;
+  --color-orange-800: #661F00;
+  --color-orange-900: #331000;
+
+  --color-offwhite: #F8F8F8;
+  --color-black: #101010;
+
+  --color-orange: var(--color-orange-500);
+  --color-void: var(--color-offwhite);
+  --color-surface: #ffffff;
+  --color-text: var(--color-black);
+  --color-text-muted: #666666;
+
+  /* Typography */
+  --font-inter: 'Inter';
+  --font-outfit: 'Outfit';
+  /* Assuming 'Outfit' is the intended font for --font-outfit */
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-serif: 'Bree Serif', serif;
+  --font-display: var(--font-outfit), var(--font-inter), sans-serif;
+  --font-mono: monospace;
+  /* Default mono or add custom if needed */
+}
+
+@layer base {
+  body {
+    @apply bg-offwhite text-black antialiased;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Base */
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-body);
+  background: var(--color-void);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* Tech Button Style */
+.btn-tech {
+  position: relative;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-tech:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn-tech-primary {
+  background: var(--color-text);
+  /* Black/Dark Iron */
+  color: white;
+  border: 1px solid transparent;
+}
+
+.btn-tech-primary:hover {
+  background: var(--color-orange);
+  color: white;
+  box-shadow: 0 4px 20px rgba(255, 122, 0, 0.4);
+}
+
+.btn-tech-secondary {
+  background: transparent;
+  color: var(--color-text);
+  border: 2px solid var(--color-text);
+}
+
+.btn-tech-secondary:hover {
+  background: var(--color-text);
+  color: white;
+}
+
+/* Typography */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+/* Cards */
+.glass-card {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(255, 122, 0, 0.3);
+  box-shadow: 0 4px 16px rgba(255, 122, 0, 0.1);
+  transform: translateY(-2px);
+  transition: all 0.2s ease;
+}
+
+/* Simple animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ping {
+
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes bounce {
+
+  0%,
+  100% {
+    transform: translateY(-25%);
+  }
+
+  50% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-enter {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-ping {
+  animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+/* New Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px) translateX(0px);
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    transform: translateY(-100vh) translateX(20px);
+    opacity: 0;
+  }
+}
+
+@keyframes text-shimmer {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  100% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-float {
+  animation: float 15s linear infinite;
+}
+
+.animate-text-shimmer {
+  background: linear-gradient(to right,
+      var(--color-text) 20%,
+      var(--color-orange) 30%,
+      var(--color-orange) 70%,
+      var(--color-text) 80%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  background-size: 500% auto;
+  animation: text-shimmer 5s ease-in-out infinite alternate;
+}
+
+/* Buttons */
+.btn-primary {
+  background: var(--color-orange-500);
+  color: white;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+}
+
+.btn-primary:hover {
+  box-shadow: 0 4px 20px rgba(255, 140, 0, 0.3);
+}
+
+/* Wallet adapter */
+.wallet-adapter-button {
+  background: var(--gradient-orange) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 0.5rem !important;
+  padding: 0.75rem 1rem !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ddd;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-orange);
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .glass-card-hover:hover {
+    transform: none;
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
