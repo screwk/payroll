@@ -134,7 +134,7 @@ export default function AdminPage() {
 
   const handleDeleteRaffle = async (id: string) => {
     if (confirm("Are you sure you want to delete this raffle?")) {
-      const result = await deleteRaffle(id);
+      const result = await deleteRaffle(id, publicKey?.toString());
       if (result.success) {
         // Optimistic update: clear state first to show immediate action
         setExistingRaffles(prev => prev.filter(r => r.id !== id));
