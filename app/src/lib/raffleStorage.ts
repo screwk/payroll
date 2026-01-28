@@ -290,43 +290,30 @@ export const createRaffle = async (data: {
   return mapRaffleRow(newRaffle);
 };
 
-export const deleteRaffle = async (id: string): Promise<{ success: boolean; error?: string; rowsAffected?: number }> => {
+export const deleteRaffle = async (id: string, adminWallet?: string): Promise<{ success: boolean; error?: string; rowsAffected?: number }> => {
   try {
-    console.log(`[deleteRaffle] Attempting to delete raffle: ${id}`);
+    console.log(`[deleteRaffle] Calling API to delete raffle: ${id}`);
 
-    // 1. Delete associated participants first
-    const { error: partError, count: partCount } = await supabase
-      .from('participants')
-      .delete({ count: 'exact' })
-      .eq('raffle_id', id);
-
-    if (partError) {
-      console.error("[deleteRaffle] Error deleting participants:", partError);
-      return { success: false, error: `Failed to clear participants: ${partError.message}` };
-    }
-    console.log(`[deleteRaffle] Participants deleted: ${partCount || 0}`);
-
-    // 2. Delete the raffle itself and check if it actually existed
-    const { error: raffleError, count: raffleCount } = await supabase
-      .from('raffles')
-      .delete({ count: 'exact' })
-      .eq('id', id);
-
-    if (raffleError) {
-      console.error("[deleteRaffle] Error deleting raffle:", raffleError);
-      return { success: false, error: `Failed to delete raffle: ${raffleError.message}` };
+    if (!adminWallet) {
+      return { success: false, error: "Admin wallet required for deletion" };
     }
 
-    if (raffleCount === 0) {
-      console.warn(`[deleteRaffle] No raffle found with ID: ${id}. It may have already been deleted or RLS is blocking the operation.`);
-      return { success: false, error: "No raffle was found to delete. This usually means the database blocked the request due to permissions (RLS).", rowsAffected: 0 };
+    const response = await fetch("/api/raffle/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raffleId: id, adminWallet })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return { success: false, error: result.error || "Failed to delete raffle via API" };
     }
 
-    console.log(`[deleteRaffle] Successfully deleted raffle: ${id} (Rows affected: ${raffleCount})`);
-    return { success: true, rowsAffected: raffleCount || 0 };
+    return { success: true };
   } catch (err: any) {
-    console.error("[deleteRaffle] Unexpected error:", err);
-    return { success: false, error: err.message || "An unexpected error occurred" };
+    console.error("[deleteRaffle] API Call Error:", err);
+    return { success: false, error: err.message || "An unexpected error occurred during the API call" };
   }
 };
 
