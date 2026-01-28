@@ -50,21 +50,66 @@ export default function BentoGrid({ raffles, filter, setFilter }: BentoGridProps
     return (
         <section id="raffles" className="py-12 sm:py-20 px-4 sm:px-6 lg:px-8 bg-offwhite">
             <div className="max-w-7xl mx-auto">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-6 sm:mb-8 text-center sm:text-left">
-                    <div>
-                        <motion.p
-                            initial={{ opacity: 0, y: 10 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className="text-gray-500 font-bold uppercase tracking-widest text-xs sm:text-sm mb-2"
-                        >
-                            Select a Pool - Buy Tickets - Win
-                        </motion.p>
-                        <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-black">
-                            Active <span className="text-orange-500">Raffles</span>
-                        </h2>
+                {/* Header Container with relative for Mascot */}
+                <div className="relative mb-8 sm:mb-12 overflow-visible">
+                    {/* Header Text */}
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 text-center sm:text-left relative z-10">
+                        <div>
+                            <motion.p
+                                initial={{ opacity: 0, y: 10 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-gray-500 font-bold uppercase tracking-widest text-xs sm:text-sm mb-2"
+                            >
+                                Select a Pool - Buy Tickets - Win
+                            </motion.p>
+                            <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-black">
+                                Live <span className="text-orange-500">Raffles</span>
+                            </h2>
+                        </div>
                     </div>
+
+                    {/* Mascot - Rich pose */}
+                    <motion.div
+                        className="hidden sm:block absolute right-0 bottom-[-50px] sm:bottom-[-70px] md:bottom-[-130px] z-20 pointer-events-none"
+                        initial={{ x: 100, opacity: 0, scale: 0.8 }}
+                        whileInView={{ x: 0, opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{
+                            duration: 0.8,
+                            ease: "easeOut",
+                            opacity: { duration: 0.6 },
+                            scale: { duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }
+                        }}
+                    >
+                        {/* Glow effect behind mascot */}
+                        <motion.div
+                            className="absolute inset-0 bg-orange-500/10 blur-3xl rounded-full"
+                            animate={{
+                                opacity: [0.1, 0.3, 0.1],
+                                scale: [1, 1.1, 1],
+                            }}
+                            transition={{
+                                duration: 3,
+                                ease: "easeInOut",
+                                repeat: Infinity,
+                            }}
+                        />
+
+                        <motion.img
+                            src="/rich.svg"
+                            alt="Payroll Mascot Rich"
+                            className="relative h-[180px] sm:h-[240px] md:h-[320px] lg:h-[380px] object-contain drop-shadow-2xl"
+                            animate={{
+                                y: [0, -4, 0],
+                            }}
+                            transition={{
+                                duration: 3.5,
+                                ease: "easeInOut",
+                                repeat: Infinity,
+                            }}
+                        />
+                    </motion.div>
                 </div>
 
                 {/* Filter */}

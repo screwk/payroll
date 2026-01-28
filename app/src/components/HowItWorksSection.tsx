@@ -155,8 +155,8 @@ export default function HowItWorksSection() {
     };
 
     return (
-        <section id="how-it-works" className="scroll-mt-20">
-            <div className="relative overflow-hidden">
+        <section id="how-it-works" className="scroll-mt-20 overflow-x-clip">
+            <div className="relative">
                 {/* Vertical Logo Decoration - Animated */}
                 <motion.div
                     className="absolute -left-[450px] top-1/2 w-[1200px] max-w-none h-auto select-none pointer-events-none z-10"
@@ -197,26 +197,70 @@ export default function HowItWorksSection() {
                 </motion.div>
 
                 {/* Header */}
-                <div className="bg-orange-500 py-16 sm:py-20 px-4 sm:px-6 lg:px-8 relative">
-                    <div className="max-w-7xl mx-auto text-center">
-                        <motion.h2
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-white mb-4 sm:mb-6"
-                        >
-                            How It Works
-                        </motion.h2>
-                        <motion.p
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 }}
-                            className="text-white/80 text-base sm:text-lg max-w-2xl mx-auto px-4 font-serif"
-                        >
-                            Payroll makes participating in raffles simple, transparent, and fair.
-                        </motion.p>
+                <div className="bg-orange-500 pt-12 sm:pt-24 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-8 relative overflow-visible">
+                    <div className="max-w-7xl mx-auto relative z-10">
+                        <div className="ml-0 sm:ml-[200px] md:ml-[280px] lg:ml-[360px]">
+                            <motion.h2
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-white mb-4 sm:mb-6"
+                            >
+                                How It Works
+                            </motion.h2>
+                            <motion.p
+                                initial={{ opacity: 0, y: 20 }}
+                                whileInView={{ opacity: 1, y: 0 }}
+                                viewport={{ once: true }}
+                                transition={{ delay: 0.1 }}
+                                className="text-white/80 text-base sm:text-lg max-w-xl font-serif"
+                            >
+                                Payroll makes participating in raffles simple, transparent, and fair.
+                            </motion.p>
+                        </div>
                     </div>
+
+                    {/* Mascot - Think pose */}
+                    <motion.div
+                        className="absolute right-0 sm:right-auto sm:left-12 md:left-20 bottom-0 z-20 pointer-events-none"
+                        initial={{ x: -100, opacity: 0, scale: 0.8 }}
+                        whileInView={{ x: 0, opacity: 1, scale: 1 }}
+                        viewport={{ once: true }}
+                        transition={{
+                            duration: 0.8,
+                            ease: "easeOut",
+                            opacity: { duration: 0.6 },
+                            scale: { duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }
+                        }}
+                    >
+                        {/* Glow effect behind mascot */}
+                        <motion.div
+                            className="absolute inset-0 bg-white/20 blur-3xl rounded-full"
+                            animate={{
+                                opacity: [0.2, 0.4, 0.2],
+                                scale: [1, 1.1, 1],
+                            }}
+                            transition={{
+                                duration: 3,
+                                ease: "easeInOut",
+                                repeat: Infinity,
+                            }}
+                        />
+
+                        <motion.img
+                            src="/vasko1010.svg"
+                            alt="Payroll Mascot Thinking"
+                            className="relative h-[200px] sm:h-[320px] md:h-[420px] lg:h-[520px] object-contain drop-shadow-2xl"
+                            animate={{
+                                y: [0, -4, 0],
+                            }}
+                            transition={{
+                                duration: 3.5,
+                                ease: "easeInOut",
+                                repeat: Infinity,
+                            }}
+                        />
+                    </motion.div>
                 </div>
 
                 {/* Interactive Steps Timeline */}

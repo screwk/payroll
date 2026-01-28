@@ -46,8 +46,8 @@ export default function WinnersSection() {
     return (
         <section id="winners" className="scroll-mt-20">
             {/* Header */}
-            <div className="bg-black py-12 sm:py-16 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
+            <div className="bg-black pt-12 sm:pt-24 pb-24 sm:pb-32 px-4 sm:px-6 lg:px-8 relative overflow-visible">
+                <div className="max-w-7xl mx-auto relative z-10">
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         whileInView={{ opacity: 1, y: 0 }}
@@ -55,16 +55,59 @@ export default function WinnersSection() {
                         className="flex items-center gap-3 sm:gap-4 mb-4"
                     >
                         <div className="w-12 h-12 sm:w-16 sm:h-16 bg-orange-500 flex items-center justify-center shrink-0">
-                            <Trophy size={32} className="text-white" />
+                            <Trophy size={24} className="text-white sm:hidden" />
+                            <Trophy size={32} className="text-white hidden sm:block" />
                         </div>
                         <h2 className="text-4xl sm:text-5xl md:text-7xl font-black uppercase tracking-tighter text-white">
                             Winners
                         </h2>
                     </motion.div>
-                    <p className="text-white/60 text-base sm:text-lg max-w-2xl font-serif">
+                    <p className="text-white/60 text-base sm:text-lg max-w-xl font-serif leading-relaxed">
                         All winners are selected using verifiable on-chain randomness. Every draw is transparent and can be verified on the Solana blockchain.
                     </p>
                 </div>
+
+                {/* Mascot - Responsive positioning */}
+                <motion.div
+                    className="absolute right-0 bottom-0 z-20 pointer-events-none"
+                    initial={{ x: 100, opacity: 0, scale: 0.8 }}
+                    whileInView={{ x: 0, opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{
+                        duration: 0.8,
+                        ease: "easeOut",
+                        opacity: { duration: 0.6 },
+                        scale: { duration: 0.7, ease: [0.34, 1.56, 0.64, 1] }
+                    }}
+                >
+                    {/* Glow effect behind mascot */}
+                    <motion.div
+                        className="absolute inset-0 bg-orange-500/30 blur-3xl rounded-full"
+                        animate={{
+                            opacity: [0.3, 0.5, 0.3],
+                            scale: [1, 1.1, 1],
+                        }}
+                        transition={{
+                            duration: 3,
+                            ease: "easeInOut",
+                            repeat: Infinity,
+                        }}
+                    />
+
+                    <motion.img
+                        src="/boneco-base.svg"
+                        alt="Payroll Mascot"
+                        className="relative h-[180px] sm:h-[300px] md:h-[400px] lg:h-[500px] object-contain drop-shadow-2xl"
+                        animate={{
+                            y: [0, -7, 0],
+                        }}
+                        transition={{
+                            duration: 3.5,
+                            ease: "easeInOut",
+                            repeat: Infinity,
+                        }}
+                    />
+                </motion.div>
             </div>
 
             {/* Stats Summary */}
