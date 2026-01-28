@@ -2,7 +2,7 @@
 import { supabase } from "./supabase";
 import { RaffleDisplay } from "@/types/payroll";
 import { PublicKey } from "@solana/web3.js";
-import { ADMIN_WALLET } from "@/lib/config";
+import { ADMIN_WALLET, ADMIN_WALLETS } from "@/lib/config";
 
 // --- TYPES (Matching Database + Frontend) ---
 
@@ -78,7 +78,7 @@ export const getApprovedCreators = async (): Promise<ApprovedCreator[]> => {
 };
 
 export const isApprovedCreator = async (wallet: string): Promise<boolean> => {
-  if (wallet === ADMIN_WALLET) return true;
+  if (ADMIN_WALLETS.includes(wallet)) return true;
 
   const { data } = await supabase
     .from('approved_creators')
@@ -90,11 +90,11 @@ export const isApprovedCreator = async (wallet: string): Promise<boolean> => {
 };
 
 export const canCreateRaffles = async (wallet: string): Promise<boolean> => {
-  return wallet === ADMIN_WALLET || await isApprovedCreator(wallet);
+  return ADMIN_WALLETS.includes(wallet) || await isApprovedCreator(wallet);
 };
 
 export const getCreatorInfo = async (wallet: string): Promise<ApprovedCreator | null> => {
-  if (wallet === ADMIN_WALLET) {
+  if (ADMIN_WALLETS.includes(wallet)) {
     return {
       wallet: ADMIN_WALLET,
       approvedAt: new Date().toISOString(),
@@ -126,7 +126,7 @@ export const approveCreator = async (data: {
   approvedBy: string;
   displayName?: string;
 }): Promise<ApprovedCreator | null> => {
-  if (data.approvedBy !== ADMIN_WALLET) return null;
+  if (!ADMIN_WALLETS.includes(data.approvedBy)) return null;
 
   const { data: result, error } = await supabase
     .from('approved_creators')
@@ -155,7 +155,7 @@ export const approveCreator = async (data: {
 };
 
 export const revokeCreator = async (wallet: string, adminWallet: string): Promise<boolean> => {
-  if (adminWallet !== ADMIN_WALLET) return false;
+  if (!ADMIN_WALLETS.includes(adminWallet)) return false;
 
   const { error } = await supabase
     .from('approved_creators')
@@ -248,7 +248,7 @@ export const createRaffle = async (data: {
   const endTime = new Date();
   endTime.setHours(endTime.getHours() + data.durationHours);
 
-  const raffleType = data.createdBy === ADMIN_WALLET ? "official" : "community";
+  const raffleType = ADMIN_WALLETS.includes(data.createdBy) ? "official" : "community";
 
   // Get Display Name
   let creatorDisplayName = data.displayName || "";
@@ -290,9 +290,38 @@ export const createRaffle = async (data: {
   return mapRaffleRow(newRaffle);
 };
 
-export const deleteRaffle = async (id: string): Promise<boolean> => {
-  const { error } = await supabase.from('raffles').delete().eq('id', id);
-  return !error;
+export const deleteRaffle = async (id: string): Promise<{ success: boolean; error?: string }> => {
+  try {
+    console.log(`[deleteRaffle] Attempting to delete raffle: ${id}`);
+
+    // 1. Delete associated participants first (Foreign Key constraint safety)
+    const { error: partError } = await supabase
+      .from('participants')
+      .delete()
+      .eq('raffle_id', id);
+
+    if (partError) {
+      console.error("[deleteRaffle] Error deleting participants:", partError);
+      return { success: false, error: `Failed to clear participants: ${partError.message}` };
+    }
+
+    // 2. Delete the raffle itself
+    const { error: raffleError } = await supabase
+      .from('raffles')
+      .delete()
+      .eq('id', id);
+
+    if (raffleError) {
+      console.error("[deleteRaffle] Error deleting raffle:", raffleError);
+      return { success: false, error: `Failed to delete raffle: ${raffleError.message}` };
+    }
+
+    console.log(`[deleteRaffle] Successfully deleted raffle: ${id}`);
+    return { success: true };
+  } catch (err: any) {
+    console.error("[deleteRaffle] Unexpected error:", err);
+    return { success: false, error: err.message || "An unexpected error occurred" };
+  }
 };
 
 // ============ PARTICIPANTS ============

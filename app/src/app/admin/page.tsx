@@ -134,8 +134,13 @@ export default function AdminPage() {
 
   const handleDeleteRaffle = async (id: string) => {
     if (confirm("Are you sure you want to delete this raffle?")) {
-      await deleteRaffle(id);
-      loadData();
+      const result = await deleteRaffle(id);
+      if (result.success) {
+        loadData();
+      } else {
+        console.error("Deletion failed:", result.error);
+        alert(`Failed to delete raffle: ${result.error || "Unknown error"}`);
+      }
     }
   };
 
@@ -154,7 +159,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen">
-      
+
 
       <main className="relative pt-24 pb-16 px-4">
         <div className="max-w-2xl mx-auto">
