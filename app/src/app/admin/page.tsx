@@ -136,10 +136,14 @@ export default function AdminPage() {
     if (confirm("Are you sure you want to delete this raffle?")) {
       const result = await deleteRaffle(id);
       if (result.success) {
-        loadData();
+        // Optimistic update: clear state first to show immediate action
+        setExistingRaffles(prev => prev.filter(r => r.id !== id));
+        // Wait a bit and reload to ensure everything is in sync
+        setTimeout(loadData, 500);
       } else {
         console.error("Deletion failed:", result.error);
-        alert(`Failed to delete raffle: ${result.error || "Unknown error"}`);
+        alert(`Failed to delete: ${result.error}`);
+        loadData(); // Sync state anyway
       }
     }
   };
