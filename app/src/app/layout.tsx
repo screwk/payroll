@@ -23,7 +23,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${inter.variable} ${outfit.variable} antialiased font-display`}>
+      <body className={`${inter.variable} ${outfit.variable} antialiased font-display overflow-x-clip`}>
         <Providers>
           <Header />
           {children}

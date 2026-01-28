@@ -222,7 +222,7 @@ export default function HowItWorksSection() {
 
                     {/* Mascot - Think pose */}
                     <motion.div
-                        className="absolute right-0 sm:right-auto sm:left-12 md:left-20 bottom-0 z-20 pointer-events-none"
+                        className="absolute right-[-10px] sm:right-auto sm:left-12 md:left-20 bottom-0 z-20 pointer-events-none"
                         initial={{ x: -100, opacity: 0, scale: 0.8 }}
                         whileInView={{ x: 0, opacity: 1, scale: 1 }}
                         viewport={{ once: true }}
@@ -250,7 +250,7 @@ export default function HowItWorksSection() {
                         <motion.img
                             src="/vasko1010.svg"
                             alt="Payroll Mascot Thinking"
-                            className="relative h-[200px] sm:h-[320px] md:h-[420px] lg:h-[520px] object-contain drop-shadow-2xl"
+                            className="relative h-[150px] sm:h-[320px] md:h-[420px] lg:h-[520px] opacity-80 sm:opacity-100 object-contain drop-shadow-2xl"
                             animate={{
                                 y: [0, -4, 0],
                             }}

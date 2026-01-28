@@ -7,6 +7,7 @@ import RotatingText from './RotatingText';
 import Squares from './Squares';
 import TextType from './TextType';
 import GlareHover from './GlareHover';
+import Link from 'next/link';
 
 const TRUSTED_BY = ["Phantom", "Solflare", "Magic Eden", "Jupiter", "Tensor", "Backpack", "Solana Foundation"];
 
@@ -62,13 +63,14 @@ export default function Hero() {
                                 Start Playing
                                 <ArrowRight className="group-hover:translate-x-1 transition-transform" />
                             </button>
-                            <button
-                                onClick={() => document.getElementById("raffles")?.scrollIntoView({ behavior: "smooth" })}
-                                className="w-full border-2 border-black text-black px-8 py-4 font-black text-lg uppercase tracking-tight hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
-                            >
-                                <Ticket />
-                                View Raffles
-                            </button>
+                            <Link href="/raffles" className="w-full">
+                                <button
+                                    className="w-full border-2 border-black text-black px-8 py-4 font-black text-lg uppercase tracking-tight hover:bg-black hover:text-white transition-all flex items-center justify-center gap-2"
+                                >
+                                    <Ticket />
+                                    View Raffles
+                                </button>
+                            </Link>
                         </div>
                     </motion.div>
 

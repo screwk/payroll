@@ -69,7 +69,7 @@ export default function WinnersSection() {
 
                 {/* Mascot - Responsive positioning */}
                 <motion.div
-                    className="absolute right-0 bottom-0 z-20 pointer-events-none"
+                    className="absolute right-[-20px] sm:right-0 bottom-0 z-20 pointer-events-none"
                     initial={{ x: 100, opacity: 0, scale: 0.8 }}
                     whileInView={{ x: 0, opacity: 1, scale: 1 }}
                     viewport={{ once: true }}
@@ -97,7 +97,7 @@ export default function WinnersSection() {
                     <motion.img
                         src="/boneco-base.svg"
                         alt="Payroll Mascot"
-                        className="relative h-[180px] sm:h-[300px] md:h-[400px] lg:h-[500px] object-contain drop-shadow-2xl"
+                        className="relative h-[150px] sm:h-[300px] md:h-[400px] lg:h-[500px] opacity-80 sm:opacity-100 object-contain drop-shadow-2xl"
                         animate={{
                             y: [0, -7, 0],
                         }}

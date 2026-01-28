@@ -10,6 +10,7 @@ import WinnersSection from "@/components/WinnersSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import PageTransition from "@/components/PageTransition";
 import { RaffleDisplay } from "@/types/payroll";
+import Link from 'next/link';
 
 export default function HomePage() {
   const [filter, setFilter] = useState<"all" | "official" | "community" | "live" | "free" | "ended">("all");
@@ -58,9 +59,9 @@ export default function HomePage() {
               <div>
                 <h4 className="font-bold text-lg mb-6">Platform</h4>
                 <ul className="space-y-4 text-gray-400 text-sm">
-                  <li><a href="#" className="hover:text-white transition-colors text-sans">Active Raffles</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors text-sans">Create Raffle</a></li>
-                  <li><a href="#" className="hover:text-white transition-colors text-sans">My Tickets</a></li>
+                  <li><Link href="/raffles" className="hover:text-white transition-colors text-sans">Active Raffles</Link></li>
+                  <li><Link href="/community/create" className="hover:text-white transition-colors text-sans">Create Raffle</Link></li>
+                  <li><Link href="/my-tickets" className="hover:text-white transition-colors text-sans">My Tickets</Link></li>
                   <li><a href="#" className="hover:text-white transition-colors text-sans">Creators</a></li>
                 </ul>
               </div>
@@ -68,7 +69,7 @@ export default function HomePage() {
               <div>
                 <h4 className="font-bold text-lg mb-6 text-sans">Resources</h4>
                 <ul className="space-y-4 text-gray-400 text-sm">
-                  <li><a href="#" className="hover:text-white transition-colors text-sans">How it Works</a></li>
+                  <li><Link href="/#how-it-works" className="hover:text-white transition-colors text-sans">How it Works</Link></li>
                   <li><a href="#" className="hover:text-white transition-colors text-sans">Fairness Proof</a></li>
                   <li><a href="#" className="hover:text-white transition-colors text-sans">User Guide</a></li>
                   <li><a href="#" className="hover:text-white transition-colors text-sans">Fees</a></li>

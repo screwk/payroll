@@ -13,7 +13,7 @@ import { usePathname } from 'next/navigation';
 
 const NAV_LINKS = [
   { href: '/', label: 'HOME', icon: Home, anchor: null },
-  { href: '#raffles', label: 'LIVE RAFFLES', anchor: 'raffles' },
+  { href: '/raffles', label: 'LIVE RAFFLES', anchor: null },
   { href: '#winners', label: 'WINNERS', anchor: 'winners' },
   { href: '#how-it-works', label: 'HOW IT WORKS', anchor: 'how-it-works' },
 ];
