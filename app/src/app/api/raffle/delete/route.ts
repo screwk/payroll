@@ -12,19 +12,21 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Initialize Supabase with Service Role (Bypasses RLS)
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+        const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
         const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
         if (!supabaseUrl || !serviceRoleKey) {
-            console.error("[API Delete] Missing Supabase Service Role configuration");
-            console.log("URL present:", !!supabaseUrl);
-            console.log("Key present:", !!serviceRoleKey);
-            return NextResponse.json({ error: "Server configuration error: Missing Service Role Key" }, { status: 500 });
+            console.error("[API Delete] Missing configuration!");
+            console.log("process.env.SUPABASE_URL present:", !!process.env.SUPABASE_URL);
+            console.log("process.env.NEXT_PUBLIC_SUPABASE_URL present:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
+            console.log("process.env.SUPABASE_SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+            return NextResponse.json({ error: "Server configuration missing key in Vercel" }, { status: 500 });
         }
 
         // Safe logging for debugging
-        console.log(`[API Delete] Initializing with URL: ${supabaseUrl}`);
-        console.log(`[API Delete] Key prefix: ${serviceRoleKey.substring(0, 10)}... (Length: ${serviceRoleKey.length})`);
+        console.log(`[API Delete] URL in use: ${supabaseUrl}`);
+        console.log(`[API Delete] Key Prefix: ${serviceRoleKey.substring(0, 10)}...`);
+        console.log(`[API Delete] Key Length: ${serviceRoleKey.length}`);
 
         const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
             auth: {
