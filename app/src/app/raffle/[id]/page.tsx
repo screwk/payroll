@@ -6,19 +6,20 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { RaffleDisplay, formatTimeRemaining, shortenAddress } from "@/types/payroll";
 import {
-  getRaffles,
-  toRaffleDisplay,
+  getRaffleById,
   getRaffleParticipants,
-  enterRaffle,
+  buyTickets,
   Participant,
-  StoredRaffle
+  StoredRaffle,
+  toRaffleDisplay
 } from "@/lib/raffleStorage";
-import { createTransferTransaction, getBalance } from "@/lib/solanaPayment";
-import { IS_MAINNET, FREE_RAFFLE_MAX_TICKETS_PER_WALLET } from "@/lib/config";
+import { getBalance } from "@/lib/solanaPayment";
+import { HOT_WALLET, RPC_ENDPOINT, IS_MAINNET, FREE_RAFFLE_MAX_TICKETS_PER_WALLET } from "@/lib/config";
+import { Connection, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export default function RaffleDetailPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const { publicKey, connected, signTransaction } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
 
   const [raffle, setRaffle] = useState<RaffleDisplay | null>(null);
   const [raffleCreator, setRaffleCreator] = useState<string | null>(null); // Wallet that receives payments
@@ -34,30 +35,22 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
 
   // Load raffle data
   const loadRaffle = useCallback(async () => {
-    // Auto-draw moved to admin/backend
-
-    const raffles = await getRaffles();
-    const found = raffles.find(r => r.id === id);
+    const found = await getRaffleById(id);
 
     if (found) {
       const raffleDisplay = toRaffleDisplay(found);
       setRaffle(raffleDisplay);
-      setRaffleCreator(found.createdBy); // Store the creator wallet for payments
+      setRaffleCreator(found.creatorWallet);
 
       const parts = await getRaffleParticipants(id);
       setParticipants(parts);
-
-      // For free raffles, set quantity to 1
-      if (found.isFree) {
-        setQuantity(1);
-      }
 
       // Count user tickets
       if (publicKey) {
         const userParticipation = parts.find(
           p => p.wallet === publicKey.toString()
         );
-        setUserTickets(userParticipation?.tickets || 0);
+        setUserTickets(userParticipation?.quantity || 0);
       }
     }
   }, [id, publicKey]);
@@ -96,7 +89,7 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
 
   // Handle purchase
   const handlePurchase = async () => {
-    if (!connected || !publicKey || !signTransaction || !raffle) {
+    if (!connected || !publicKey || !raffle) {
       setError("Please connect your wallet first");
       return;
     }
@@ -138,49 +131,36 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
     setSuccess(null);
 
     try {
-      let txSignature: string | null = null;
+      let txSignature: string = "";
 
       if (!raffle.isFree) {
-        // Create and send transaction to the raffle creator's wallet
-        // Payment goes to whoever created the raffle (admin for official, creator wallet for community)
-        const transaction = await createTransferTransaction(
-          publicKey,
-          totalCost,
-          raffleCreator || undefined // Pass creator wallet - payments go to raffle creator
+        // 1. Send SOL to Hot Wallet
+        const connection = new Connection(RPC_ENDPOINT);
+        const transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: publicKey,
+            toPubkey: new PublicKey(HOT_WALLET),
+            lamports: totalCost * LAMPORTS_PER_SOL,
+          })
         );
 
-        // Sign transaction
-        const signedTx = await signTransaction(transaction);
-
-        // Send transaction
-        const { Connection } = await import("@solana/web3.js");
-        const connection = new Connection(
-          process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com",
-          "confirmed"
-        );
-
-        txSignature = await connection.sendRawTransaction(signedTx.serialize());
+        txSignature = await sendTransaction(transaction, connection);
 
         // Wait for confirmation
         await connection.confirmTransaction(txSignature, "confirmed");
       }
 
-      // Record the entry
-      enterRaffle({
-        wallet: publicKey.toString(),
+      // 2. Record the entry in Supabase
+      const success = await buyTickets({
+        userWallet: publicKey.toString(),
         raffleId: id,
-        tickets: quantity,
-        amountPaid: totalCost,
-        isFree: raffle.isFree,
-        txSignature,
-        status: "confirmed",
+        quantity: quantity,
+        txSignature: txSignature,
       });
 
-      setSuccess(
-        raffle.isFree
-          ? `Successfully entered with ${quantity} free ticket${quantity > 1 ? 's' : ''}!`
-          : `Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''} for ${totalCost} SOL!`
-      );
+      if (!success) throw new Error("Failed to record your tickets in the database.");
+
+      setSuccess(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''} for ${totalCost} SOL!`);
 
       // Reload data
       loadRaffle();
@@ -395,10 +375,10 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
                         </thead>
                         <tbody>
                           {participants
-                            .sort((a, b) => b.tickets - a.tickets)
+                            .sort((a, b) => b.quantity - a.quantity)
                             .map((participant, index) => (
                               <tr
-                                key={participant.wallet}
+                                key={participant.txSignature}
                                 className="border-b border-gray-100 hover:bg-orange/5 transition-colors"
                               >
                                 <td className="py-4 px-4">
@@ -421,16 +401,16 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
                                   </div>
                                 </td>
                                 <td className="py-4 px-4 text-center">
-                                  <span className="font-display font-bold text-orange">{participant.tickets}</span>
+                                  <span className="font-display font-bold text-orange">{participant.quantity}</span>
                                 </td>
                                 <td className="py-4 px-4 text-center">
-                                  <span className={`text-sm ${participant.isFree ? 'text-emerald-600' : 'text-gray-700'}`}>
-                                    {participant.isFree ? 'FREE' : `${participant.amountPaid} SOL`}
+                                  <span className={`text-sm ${raffle.isFree ? 'text-emerald-600' : 'text-gray-700'}`}>
+                                    {raffle.isFree ? 'FREE' : `${(participant.quantity * raffle.ticketPrice).toFixed(3)} SOL`}
                                   </span>
                                 </td>
                                 <td className="py-4 px-4 text-right">
                                   <span className="text-xs text-gray-500">
-                                    {new Date(participant.enteredAt).toLocaleTimeString()}
+                                    {new Date(participant.createdAt).toLocaleTimeString()}
                                   </span>
                                 </td>
                               </tr>

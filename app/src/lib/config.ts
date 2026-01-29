@@ -9,8 +9,6 @@ export const ADMIN_WALLETS = [
 
 export const OWNER_WALLET = "2qzHXnRAv4zUTQkozqFfCAFjgMd4ngTkGEcu2LprDweC";
 
-export const ADMIN_WALLET = ADMIN_WALLETS[0]; // Primary admin for backwards compatibility
-
 // Network configuration
 export const NETWORK = process.env.NEXT_PUBLIC_SOLANA_NETWORK || "mainnet-beta";
 export const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || `https://api.${NETWORK}.solana.com`;
@@ -18,8 +16,8 @@ export const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || `https://a
 // Check if we're on mainnet
 export const IS_MAINNET = NETWORK === "mainnet-beta";
 
-// Program ID (update after deploy)
-export const PROGRAM_ID = process.env.NEXT_PUBLIC_PROGRAM_ID || "PayRo11111111111111111111111111111111111111";
+// Hot Wallet address (the one you just generated)
+export const HOT_WALLET = "6LuRcZk5RK7GWnoear99LxXpPUMAkRiC64QJFDLNCLb9";
 
 // Fee configuration
 export const PLATFORM_FEE_BPS = 300; // 3% platform fee

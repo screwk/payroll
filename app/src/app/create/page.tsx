@@ -5,16 +5,19 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import Link from "next/link";
 import { createRaffle } from "@/lib/raffleStorage";
-import { IS_MAINNET } from "@/lib/config";
+import { HOT_WALLET, RPC_ENDPOINT } from "@/lib/config";
+import { Connection, SystemProgram, Transaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
 export default function CreateRafflePage() {
-    const { publicKey, connected } = useWallet();
+    const { publicKey, connected, sendTransaction } = useWallet();
     const [isCreating, setIsCreating] = useState(false);
     const [formData, setFormData] = useState({
+        title: "",
+        description: "",
         prizeAmount: "",
         ticketPrice: "",
-        maxTickets: "",
-        durationHours: "",
+        maxTickets: "100",
+        durationHours: "24",
         isFree: false,
     });
 
@@ -22,30 +25,58 @@ export default function CreateRafflePage() {
         e.preventDefault();
         if (!connected || !publicKey) return;
 
+        const prize = parseFloat(formData.prizeAmount);
+        const price = formData.isFree ? 0 : parseFloat(formData.ticketPrice);
+
+        // Validation: Ticket price cannot be more than 50% of prize
+        if (!formData.isFree && price > prize * 0.5) {
+            alert("Security Rule: Ticket price cannot be more than 50% of the prize amount.");
+            return;
+        }
+
         setIsCreating(true);
         try {
+            // 1. Create record in Supabase (status: waiting_deposit)
             const newRaffle = await createRaffle({
-                prizeAmount: parseFloat(formData.prizeAmount),
-                ticketPrice: formData.isFree ? 0 : parseFloat(formData.ticketPrice),
+                title: formData.title,
+                description: formData.description,
+                prizeAmount: prize,
+                ticketPrice: price,
                 maxTickets: parseInt(formData.maxTickets),
                 durationHours: parseInt(formData.durationHours),
-                isFree: formData.isFree,
-                createdBy: publicKey.toString(),
+                creatorWallet: publicKey.toString(),
             });
 
-            if (newRaffle) {
-                setFormData({
-                    prizeAmount: "",
-                    ticketPrice: "",
-                    maxTickets: "",
-                    durationHours: "",
-                    isFree: false,
-                });
-                alert("Raffle created successfully! It will now appear on the homepage.");
-            }
+            if (!newRaffle) throw new Error("Failed to initialize raffle record.");
+
+            // 2. Perform Solana Transfer (Deposit Prize to Hot Wallet)
+            const connection = new Connection(RPC_ENDPOINT);
+            const transaction = new Transaction().add(
+                SystemProgram.transfer({
+                    fromPubkey: publicKey,
+                    toPubkey: new PublicKey(HOT_WALLET),
+                    lamports: prize * LAMPORTS_PER_SOL,
+                })
+            );
+
+            const signature = await sendTransaction(transaction, connection);
+
+            // 3. Update record with signature (Server will monitor this and set to 'active')
+            // For now we just alert, server logic will handle activation
+            setFormData({
+                title: "",
+                description: "",
+                prizeAmount: "",
+                ticketPrice: "",
+                maxTickets: "100",
+                durationHours: "24",
+                isFree: false,
+            });
+            alert("Raffle created! Once the deposit of " + prize + " SOL is confirmed, it will go live.");
+
         } catch (error: any) {
             console.error("Failed to create raffle:", error);
-            alert(error.message || "Failed to create raffle. Ensure you have enough SOL for the prize deposit.");
+            alert(error.message || "Failed to create raffle. Check your wallet balance.");
         } finally {
             setIsCreating(false);
         }
@@ -93,11 +124,21 @@ export default function CreateRafflePage() {
                                         </div>
                                     </label>
 
+                                    {/* Title & Description */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Raffle Title</label>
+                                        <input type="text" name="title" value={formData.title} onChange={handleChange} placeholder="Mega Raffle #1" required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                                        <input type="text" name="description" value={formData.description} onChange={handleChange} placeholder="Join this amazing raffle!" className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500" />
+                                    </div>
+
                                     {/* Prize Amount */}
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Prize Amount (SOL)</label>
-                                        <input type="number" name="prizeAmount" value={formData.prizeAmount} onChange={handleChange} placeholder="5.0" step="0.01" min="0.01" required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500" />
-                                        <p className="text-xs text-gray-500 mt-1">This amount will be transferred from your wallet to escrow immediately.</p>
+                                        <input type="number" name="prizeAmount" value={formData.prizeAmount} onChange={handleChange} placeholder="1.0" step="0.01" min="0.01" required className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500" />
+                                        <p className="text-xs text-gray-500 mt-1">This amount will be transferred to escrow to guarantee the prize.</p>
                                     </div>
 
                                     {!formData.isFree && (

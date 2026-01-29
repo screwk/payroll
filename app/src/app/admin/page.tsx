@@ -9,13 +9,12 @@ import {
   createRaffle,
   getRaffles,
   deleteRaffle,
-  drawWinner,
   StoredRaffle,
-  getAllParticipantsForAdmin,
+  getRaffleParticipants,
   Participant,
 } from "@/lib/raffleStorage";
 import { shortenAddress } from "@/types/payroll";
-import { IS_MAINNET } from "@/lib/config";
+import { IS_MAINNET, ADMIN_WALLETS, OWNER_WALLET } from "@/lib/config";
 
 export default function AdminPage() {
   const { publicKey, connected } = useWallet();
@@ -23,25 +22,22 @@ export default function AdminPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [existingRaffles, setExistingRaffles] = useState<StoredRaffle[]>([]);
   const [participants, setParticipants] = useState<(Participant & { rafflePrize?: number })[]>([]);
-  const [activeTab, setActiveTab] = useState<"create" | "raffles" | "history" | "participants" | "financial">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "raffles" | "history" | "pending" | "financial">("create");
   const [formData, setFormData] = useState({
     prizeAmount: "",
     ticketPrice: "",
     maxTickets: "",
     durationHours: "",
     isFree: false,
+    title: "",
+    description: "",
   });
 
-  // Load existing raffles and participants
+  // Load data
   const loadData = async () => {
     try {
-      const [raffles, parts] = await Promise.all([
-        getRaffles(),
-        getAllParticipantsForAdmin(),
-      ]);
-
+      const raffles = await getRaffles();
       setExistingRaffles(raffles || []);
-      setParticipants(parts || []);
     } catch (err) {
       console.error("Failed to load admin data:", err);
     }
@@ -61,12 +57,13 @@ export default function AdminPage() {
     setIsCreating(true);
     try {
       const newRaffle = await createRaffle({
+        title: formData.title || `Raffle ${formData.prizeAmount} SOL`,
+        description: formData.description,
         prizeAmount: parseFloat(formData.prizeAmount),
         ticketPrice: formData.isFree ? 0 : parseFloat(formData.ticketPrice),
         maxTickets: parseInt(formData.maxTickets),
         durationHours: parseInt(formData.durationHours),
-        isFree: formData.isFree,
-        createdBy: publicKey.toString(),
+        creatorWallet: publicKey.toString(),
       });
 
       if (!newRaffle) {
@@ -79,6 +76,8 @@ export default function AdminPage() {
         maxTickets: "",
         durationHours: "",
         isFree: false,
+        title: "",
+        description: "",
       });
 
       alert("Raffle created successfully!");
@@ -104,10 +103,12 @@ export default function AdminPage() {
     }
   };
 
-  // Calculate stats
-  const totalRevenue = participants.reduce((sum, p) => sum + p.amountPaid, 0);
-  const totalTicketsSold = participants.reduce((sum, p) => sum + p.tickets, 0);
-  const uniqueWallets = new Set(participants.map(p => p.wallet)).size;
+  // Financial Stats (Global)
+  const stats = existingRaffles.reduce((acc, r) => ({
+    totalRevenue: acc.totalRevenue + r.totalRevenue,
+    totalPrizes: acc.totalPrizes + (r.status === 'completed' ? r.prizeAmount : 0),
+    activeEscrows: acc.activeEscrows + (r.status === 'active' ? r.prizeAmount : 0)
+  }), { totalRevenue: 0, totalPrizes: 0, activeEscrows: 0 });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -140,34 +141,31 @@ export default function AdminPage() {
           {/* Stats Cards */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-orange">{totalRevenue.toFixed(2)}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">SOL Received</p>
+              <p className="text-3xl font-bold text-orange">{stats.totalRevenue.toFixed(2)}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">SOL Revenue</p>
             </div>
             <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-gray-900">{totalTicketsSold}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Tickets Sold</p>
+              <p className="text-3xl font-bold text-gray-900">{stats.activeEscrows.toFixed(2)}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Active Prizes</p>
             </div>
             <div className="p-4 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 text-center">
-              <p className="text-3xl font-bold text-gray-900">{uniqueWallets}</p>
-              <p className="text-xs text-gray-500 uppercase tracking-wider">Unique Wallets</p>
+              <p className="text-3xl font-bold text-gray-900">{existingRaffles.filter(r => r.status === 'active').length}</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wider">Live Raffles</p>
             </div>
           </div>
 
           {/* Tabs */}
           <div className="flex items-center gap-1 p-1 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 mb-8 overflow-x-auto">
             {(() => {
-              const activeRaffleIds = new Set(existingRaffles.filter(r => !r.isDrawn).map(r => r.id));
-              const activeEntriesCount = participants.filter(p => activeRaffleIds.has(p.raffleId)).length;
-
               const tabs = [
                 { key: "create", label: "Create", icon: "+" },
-                { key: "raffles", label: `Active (${existingRaffles.filter(r => !r.isDrawn).length})`, icon: "🎯" },
-                { key: "history", label: `History (${existingRaffles.filter(r => r.isDrawn).length})`, icon: "🏆" },
-                { key: "participants", label: `Entries (${activeEntriesCount})`, icon: "👥" },
+                { key: "raffles", label: `Live (${existingRaffles.filter(r => r.status === 'active').length})`, icon: "🎯" },
+                { key: "history", label: `Ended (${existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length})`, icon: "🏆" },
+                { key: "pending", label: `Awaiting Deposit (${existingRaffles.filter(r => r.status === 'waiting_deposit').length})`, icon: "⏳" },
               ];
 
               if (isOwner) {
-                tabs.push({ key: "financial", label: "Financial", icon: "💰" });
+                tabs.push({ key: "financial", label: "Revenue", icon: "💰" });
               }
 
               return tabs;
@@ -251,132 +249,157 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <button type="submit" disabled={isCreating} className={`w-full py-4 rounded-xl font-display font-bold text-lg text-white transition-all ${isCreating ? "bg-gray-400" : "bg-gradient-to-r from-orange-500 to-amber-500 hover:scale-[1.02] shadow-lg"}`}>
-                        {isCreating ? "Processing..." : "Create Raffle"}
+                        {isCreating ? "Initializing..." : "Create (Awaiting Deposit)"}
                       </button>
                     </div>
                   </div>
                 </form>
               )}
 
-              {/* ACTIVE RAFFLES TAB */}
+              {/* LIVE RAFFLES TAB */}
               {activeTab === "raffles" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
                   <h3 className="font-display font-bold text-lg mb-4">Active Raffles</h3>
                   <div className="space-y-3">
-                    {existingRaffles.filter(r => !r.isDrawn).map(raffle => (
+                    {existingRaffles.filter(r => r.status === 'active').map(raffle => (
                       <div key={raffle.id} className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-between">
                         <div>
-                          <p className="font-bold">{raffle.prizeAmount} SOL</p>
-                          <p className="text-xs text-gray-500">{raffle.ticketsSold}/{raffle.maxTickets} sold</p>
+                          <p className="font-bold">{raffle.title || "Untitled Raffle"}</p>
+                          <p className="text-xs text-orange-600 font-bold">{raffle.prizeAmount} SOL Prize</p>
+                          <p className="text-[10px] text-gray-500">{raffle.ticketsSold} tickets sold</p>
                         </div>
                         <div className="flex gap-2">
-                          {raffle.ticketsSold > 0 && (
-                            <button onClick={async () => {
-                              const result = await drawWinner(raffle.id);
-                              if (result) { alert("Winner drawn!"); loadData(); }
-                            }} className="px-3 py-1 bg-orange-500 text-white text-xs rounded hover:bg-orange-600 font-bold">
-                              Draw Winner
-                            </button>
-                          )}
+                          <button onClick={async () => {
+                            if (!confirm("Draw winner now?")) return;
+                            const res = await fetch("/api/raffle/draw", {
+                              method: "POST",
+                              body: JSON.stringify({ raffleId: raffle.id, adminWallet: publicKey?.toString() })
+                            });
+                            if (res.ok) { alert("Winner drawn!"); loadData(); }
+                            else { alert("Error drawing winner."); }
+                          }} className="px-3 py-1 bg-orange border border-orange text-white text-[10px] rounded hover:bg-orange-bright font-bold">
+                            Draw Now
+                          </button>
                           <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                           </button>
                         </div>
                       </div>
                     ))}
-                    {existingRaffles.filter(r => !r.isDrawn).length === 0 && <p className="text-center py-6 text-gray-500">No active raffles.</p>}
+                    {existingRaffles.filter(r => r.status === 'active').length === 0 && <p className="text-center py-6 text-gray-500">No live raffles.</p>}
                   </div>
                 </div>
               )}
 
-              {/* HISTORY TAB */}
+              {/* ENDED TAB */}
               {activeTab === "history" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
-                  <h3 className="font-display font-bold text-lg mb-4">History</h3>
+                  <h3 className="font-display font-bold text-lg mb-4">Ended Raffles</h3>
                   <div className="space-y-4">
-                    {existingRaffles.filter(r => r.isDrawn).map(raffle => (
-                      <div key={raffle.id} className="p-4 rounded-xl bg-emerald-50 border border-emerald-100">
+                    {existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout', 'refunded'].includes(r.status)).map(raffle => (
+                      <div key={raffle.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200">
                         <div className="flex justify-between items-center mb-2">
-                          <p className="font-bold">{raffle.prizeAmount} SOL</p>
-                          <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.5 rounded-full font-bold">COMPLETED</span>
+                          <p className="font-bold">{raffle.title} ({raffle.prizeAmount} SOL)</p>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${raffle.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'
+                            }`}>{raffle.status}</span>
                         </div>
-                        <p className="text-xs text-gray-600 font-mono break-all">Winner: {raffle.winner}</p>
+                        <p className="text-[10px] text-gray-500">Winner: {raffle.winnerWallet ? shortenAddress(raffle.winnerWallet, 8) : "N/A"}</p>
+                        <div className="mt-2 flex gap-2">
+                          {raffle.status === 'pending_payout' && isOwner && (
+                            <button onClick={async () => {
+                              const res = await fetch("/api/raffle/payout", {
+                                method: "POST",
+                                body: JSON.stringify({ raffleId: raffle.id, ownerWallet: publicKey?.toString() })
+                              });
+                              if (res.ok) { alert("Payout successful!"); loadData(); }
+                              else { alert("Payout failed."); }
+                            }} className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded font-bold">
+                              Release Payout (Lucro/Prejuízo)
+                            </button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* PARTICIPANTS TAB */}
-              {activeTab === "participants" && (
+              {/* PENDING DEPOSIT TAB */}
+              {activeTab === "pending" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
-                  <h3 className="font-display font-bold text-lg mb-4">Live Entries</h3>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-gray-400">
-                          <th className="py-2 text-left">Wallet</th>
-                          <th className="py-2 text-center">Raffle</th>
-                          <th className="py-2 text-center">Tickets</th>
-                          <th className="py-2 text-right">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {participants.filter(p => existingRaffles.find(r => r.id === p.raffleId && !r.isDrawn)).map((p, i) => (
-                          <tr key={i} className="border-b border-gray-50">
-                            <td className="py-2 font-mono">{shortenAddress(p.wallet, 6)}</td>
-                            <td className="py-2 text-center">{p.rafflePrize} SOL</td>
-                            <td className="py-2 text-center font-bold">{p.tickets}</td>
-                            <td className="py-2 text-right"><span className="text-emerald-600 uppercase font-bold text-[10px]">{p.status}</span></td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <h3 className="font-display font-bold text-lg mb-4">Awaiting Deposits</h3>
+                  <p className="text-xs text-gray-500 mb-4">Raffles created but not yet active because the prize deposit hasn't been confirmed.</p>
+                  <div className="space-y-3">
+                    {existingRaffles.filter(r => r.status === 'waiting_deposit').map(raffle => (
+                      <div key={raffle.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between">
+                        <div>
+                          <p className="font-bold text-sm">{raffle.title}</p>
+                          <p className="text-xs text-gray-500">Target: {raffle.prizeAmount} SOL</p>
+                          <p className="text-[9px] font-mono text-orange-600">Creator: {shortenAddress(raffle.creatorWallet, 4)}</p>
+                        </div>
+                        <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
 
-              {/* FINANCIAL TAB */}
+              {/* FINANCIAL REVENUE TAB */}
               {activeTab === "financial" && isOwner && (
                 <div className="space-y-6">
                   <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
-                    <h3 className="font-display font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">💰 Financial Dashboard</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-6">
+                    <h3 className="font-display font-bold text-lg text-gray-900 mb-6 flex items-center gap-2">💰 Revenue & Payouts</h3>
+                    <div className="grid grid-cols-3 gap-4 mb-6">
                       <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 text-center">
-                        <p className="text-2xl font-bold text-orange-600">{totalRevenue.toFixed(2)}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Total Gross Income (SOL)</p>
+                        <p className="text-xl font-bold text-orange-600">{stats.totalRevenue.toFixed(2)}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Gross Tickets (SOL)</p>
                       </div>
-                      <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 text-center">
-                        <p className="text-2xl font-bold">{existingRaffles.filter(r => !r.isDrawn).length}</p>
-                        <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Active Raffle Escrows</p>
+                      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100 text-center">
+                        <p className="text-xl font-bold text-emerald-600">{stats.totalPrizes.toFixed(2)}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Prizes Distributed</p>
+                      </div>
+                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 text-center">
+                        <p className="text-xl font-bold text-blue-600">{(stats.totalRevenue - stats.totalPrizes).toFixed(2)}</p>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-tighter">Platform Profit (SOL)</p>
                       </div>
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-xs">
+                      <table className="w-full text-[10px]">
                         <thead>
                           <tr className="text-left border-b border-gray-200 text-gray-400">
+                            <th className="pb-3 px-2">Raffle / Creator</th>
+                            <th className="pb-3 px-2">Revenue</th>
                             <th className="pb-3 px-2">Prize</th>
-                            <th className="pb-3 px-2">Escrow Address</th>
-                            <th className="pb-3 px-2">Status</th>
-                            <th className="pb-3 px-2 text-right">Emergency</th>
+                            <th className="pb-3 px-2">P/L</th>
+                            <th className="pb-3 px-2 text-right">Action</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                          {existingRaffles.map(raffle => (
-                            <tr key={raffle.id} className="hover:bg-gray-50">
-                              <td className="py-3 px-2 font-bold">{raffle.prizeAmount} SOL</td>
-                              <td className="py-3 px-2 font-mono"><a href={`https://solscan.io/account/${raffle.id}?cluster=${IS_MAINNET ? 'mainnet' : 'devnet'}`} target="_blank" className="text-orange-500">View on Solscan</a></td>
-                              <td className="py-3 px-2"><span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${raffle.isDrawn ? 'bg-gray-100 text-gray-400' : 'bg-green-100 text-green-700'}`}>{raffle.isDrawn ? 'DRAWN' : 'ESCROW'}</span></td>
-                              <td className="py-3 px-2 text-right"><button onClick={() => alert("Rescue functionality via Contract directly.")} className="px-2 py-1 bg-red-50 text-red-600 rounded text-[10px] font-bold">Rescue SOL</button></td>
-                            </tr>
-                          ))}
+                          {existingRaffles.filter(r => r.status !== 'waiting_deposit').map(raffle => {
+                            const profit = raffle.totalRevenue - raffle.prizeAmount;
+                            return (
+                              <tr key={raffle.id} className="hover:bg-gray-50">
+                                <td className="py-3 px-2 font-bold">{raffle.title}<br /><span className="font-normal text-gray-400">{shortenAddress(raffle.creatorWallet, 4)}</span></td>
+                                <td className="py-3 px-2">{raffle.totalRevenue.toFixed(3)}</td>
+                                <td className="py-3 px-2">{raffle.prizeAmount}</td>
+                                <td className={`py-3 px-2 font-bold ${profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {profit > 0 ? '+' : ''}{profit.toFixed(3)}
+                                </td>
+                                <td className="py-3 px-2 text-right">
+                                  {raffle.status === 'pending_payout' ? (
+                                    <button className="text-emerald-600 font-bold">Release</button>
+                                  ) : (
+                                    <span className="text-gray-300 uppercase">{raffle.status}</span>
+                                  )}
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                  <div className="p-4 bg-red-50 border border-red-100 rounded-xl">
-                    <p className="text-sm font-bold text-red-900 mb-1">Owner Security Alert</p>
-                    <p className="text-[11px] text-red-700">The Financial Control tab is restricted to the hardcoded Owner. Rescue tools should only be used if the automated draw mechanism fails.</p>
                   </div>
                 </div>
               )}
