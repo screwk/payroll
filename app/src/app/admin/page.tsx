@@ -7,6 +7,7 @@ import { useAdmin } from "@/providers/AdminProvider";
 
 import {
   createRaffle,
+  updateRaffleSignature,
   getRaffles,
   deleteRaffle,
   StoredRaffle,
@@ -105,6 +106,9 @@ export default function AdminPage() {
 
       const signature = await sendTransaction(transaction, connection);
 
+      // 3. Update record with signature (Server will monitor this and set to 'active')
+      await updateRaffleSignature(newRaffle.id, signature);
+
       setFormData({
         prizeAmount: "",
         ticketPrice: "",
@@ -135,6 +139,25 @@ export default function AdminPage() {
         alert(`Failed to delete: ${result.error}`);
         loadData();
       }
+    }
+  };
+
+  const [isSyncing, setIsSyncing] = useState(false);
+  const handleSync = async () => {
+    setIsSyncing(true);
+    try {
+      const response = await fetch("/api/raffle/activate/auto");
+      const result = await response.json();
+      if (result.success) {
+        alert("Sync complete: " + (result.results?.length || 0) + " activations attempted.");
+        loadData();
+      } else {
+        alert("Sync failed: " + result.error);
+      }
+    } catch (err: any) {
+      alert("Sync error: " + err.message);
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -189,37 +212,53 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Tabs */}
-          <div className="flex items-center gap-1 p-1 bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 mb-8 overflow-x-auto">
-            {(() => {
-              const tabs = [
-                { key: "create", label: "Create", icon: "+" },
-                { key: "raffles", label: `Live (${existingRaffles.filter(r => r.status === 'active').length})`, icon: "🎯" },
-                { key: "history", label: `Ended (${existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length})`, icon: "🏆" },
-                { key: "pending", label: `Awaiting Deposit (${existingRaffles.filter(r => r.status === 'waiting_deposit').length})`, icon: "⏳" },
-              ];
+          <div className="bg-white/80 backdrop-blur-sm rounded-xl border border-gray-200 mb-8 overflow-hidden shadow-sm">
+            <div className="flex items-center gap-1 p-1 overflow-x-auto">
+              {(() => {
+                const tabs = [
+                  { key: "create", label: "Create", icon: "+" },
+                  { key: "raffles", label: `Live (${existingRaffles.filter(r => r.status === 'active').length})`, icon: "🎯" },
+                  { key: "history", label: `Ended (${existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length})`, icon: "🏆" },
+                  { key: "pending", label: `Awaiting Deposit (${existingRaffles.filter(r => r.status === 'waiting_deposit').length})`, icon: "⏳" },
+                ];
 
-              if (isOwner) {
-                tabs.push({ key: "financial", label: "Revenue", icon: "💰" });
-              }
+                if (isOwner) {
+                  tabs.push({ key: "financial", label: "Revenue", icon: "💰" });
+                }
 
-              return tabs;
-            })().map((tab) => (
+                return tabs;
+              })().map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key as any)}
+                  className={`
+                    flex-1 px-4 py-3 rounded-lg font-display text-sm transition-all duration-200 whitespace-nowrap
+                    ${activeTab === tab.key
+                      ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                    }
+                  `}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Sync Bar */}
+            <div className="px-4 py-2 bg-gray-50/50 border-t border-gray-100 flex justify-between items-center">
+              <span className="text-[10px] text-gray-400">Deposits take 1-2 mins to confirm</span>
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key as any)}
-                className={`
-                  flex-1 px-4 py-3 rounded-lg font-display text-sm transition-all duration-200 whitespace-nowrap
-                  ${activeTab === tab.key
-                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                  }
-                `}
+                onClick={handleSync}
+                disabled={isSyncing}
+                className="text-xs font-bold text-orange-600 hover:text-orange-700 flex items-center gap-2 disabled:opacity-50 transition-colors"
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.label}
+                <svg className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {isSyncing ? 'Syncing...' : 'Sync Deposits'}
               </button>
-            ))}
+            </div>
           </div>
 
           {/* Auth Check */}

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import Link from "next/link";
-import { createRaffle } from "@/lib/raffleStorage";
+import { createRaffle, updateRaffleSignature } from "@/lib/raffleStorage";
 import { HOT_WALLET, RPC_ENDPOINT } from "@/lib/config";
 import { Connection, SystemProgram, Transaction, LAMPORTS_PER_SOL, PublicKey } from "@solana/web3.js";
 
@@ -70,7 +70,8 @@ export default function CreateRafflePage() {
             const signature = await sendTransaction(transaction, connection);
 
             // 3. Update record with signature (Server will monitor this and set to 'active')
-            // For now we just alert, server logic will handle activation
+            await updateRaffleSignature(newRaffle.id, signature);
+
             setFormData({
                 title: "",
                 description: "",

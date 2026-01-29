@@ -117,6 +117,19 @@ export const createRaffle = async (data: {
   return mapRaffleRow(newRaffle);
 };
 
+export const updateRaffleSignature = async (raffleId: string, signature: string): Promise<boolean> => {
+  const { error } = await supabase
+    .from('raffles')
+    .update({ deposit_tx_signature: signature })
+    .eq('id', raffleId);
+
+  if (error) {
+    console.error("[updateRaffleSignature] Error:", error);
+    return false;
+  }
+  return true;
+};
+
 // ============ PARTICIPANTS ============
 
 const mapParticipantRow = (row: any): Participant => ({
