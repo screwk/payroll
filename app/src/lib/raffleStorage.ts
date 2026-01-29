@@ -20,14 +20,6 @@ export interface Participant {
   status: "pending" | "confirmed" | "failed";
 }
 
-export interface ApprovedCreator {
-  wallet: string;
-  approvedAt: string;
-  approvedBy: string;
-  displayName?: string;
-  isActive: boolean;
-}
-
 export interface StoredRaffle {
   id: string;
   prizeAmount: number;
@@ -49,139 +41,6 @@ export interface StoredRaffle {
 // Generate unique ID (Still useful for optimistic updates or internal logic)
 const generateId = (): string => {
   return `raffle_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-};
-
-// ============ APPROVED CREATORS ============
-
-export const getApprovedCreators = async (): Promise<ApprovedCreator[]> => {
-  const { data, error } = await supabase
-    .from('approved_creators')
-    .select('*');
-
-  if (error) {
-    console.error("Error fetching creators:", error);
-    return [];
-  }
-
-  // Map snake_case (DB) to camelCase (App) if needed?
-  // Our schema used snake_case for columns like approved_at.
-  // Supabase returns objects matching column names.
-  // We need to map them to conform to the Interface.
-
-  return data.map((c: any) => ({
-    wallet: c.wallet,
-    approvedAt: c.approved_at,
-    approvedBy: c.approved_by,
-    displayName: c.display_name,
-    isActive: c.is_active
-  }));
-};
-
-export const isApprovedCreator = async (wallet: string): Promise<boolean> => {
-  if (ADMIN_WALLETS.includes(wallet)) return true;
-
-  const { data } = await supabase
-    .from('approved_creators')
-    .select('is_active')
-    .eq('wallet', wallet)
-    .single();
-
-  return data?.is_active || false;
-};
-
-export const canCreateRaffles = async (wallet: string): Promise<boolean> => {
-  return ADMIN_WALLETS.includes(wallet) || await isApprovedCreator(wallet);
-};
-
-export const getCreatorInfo = async (wallet: string): Promise<ApprovedCreator | null> => {
-  if (ADMIN_WALLETS.includes(wallet)) {
-    return {
-      wallet: ADMIN_WALLET,
-      approvedAt: new Date().toISOString(),
-      approvedBy: ADMIN_WALLET,
-      displayName: "PAYROLL Official",
-      isActive: true,
-    };
-  }
-
-  const { data } = await supabase
-    .from('approved_creators')
-    .select('*')
-    .eq('wallet', wallet)
-    .single();
-
-  if (!data) return null;
-
-  return {
-    wallet: data.wallet,
-    approvedAt: data.approved_at,
-    approvedBy: data.approved_by,
-    displayName: data.display_name,
-    isActive: data.is_active
-  };
-};
-
-export const approveCreator = async (data: {
-  wallet: string;
-  approvedBy: string;
-  displayName?: string;
-}): Promise<ApprovedCreator | null> => {
-  if (!ADMIN_WALLETS.includes(data.approvedBy)) return null;
-
-  const { data: result, error } = await supabase
-    .from('approved_creators')
-    .upsert({
-      wallet: data.wallet,
-      approved_by: data.approvedBy,
-      display_name: data.displayName,
-      is_active: true,
-      approved_at: new Date().toISOString()
-    })
-    .select()
-    .single();
-
-  if (error || !result) {
-    console.error("Error approving creator:", error);
-    return null;
-  }
-
-  return {
-    wallet: result.wallet,
-    approvedAt: result.approved_at,
-    approvedBy: result.approved_by,
-    displayName: result.display_name,
-    isActive: result.is_active
-  };
-};
-
-export const revokeCreator = async (wallet: string, adminWallet: string): Promise<boolean> => {
-  if (!ADMIN_WALLETS.includes(adminWallet)) return false;
-
-  const { error } = await supabase
-    .from('approved_creators')
-    .update({ is_active: false })
-    .eq('wallet', wallet);
-
-  return !error;
-};
-
-export const updateCreatorDisplayName = async (wallet: string, displayName: string): Promise<ApprovedCreator | null> => {
-  const { data, error } = await supabase
-    .from('approved_creators')
-    .update({ display_name: displayName })
-    .eq('wallet', wallet)
-    .select()
-    .single();
-
-  if (error || !data) return null;
-
-  return {
-    wallet: data.wallet,
-    approvedAt: data.approved_at,
-    approvedBy: data.approved_by,
-    displayName: data.display_name,
-    isActive: data.is_active
-  };
 };
 
 // ============ RAFFLES ============
@@ -239,25 +98,10 @@ export const createRaffle = async (data: {
   createdBy: string;
   displayName?: string;
 }): Promise<StoredRaffle | null> => {
-  console.log("[createRaffle] Creating for:", data.createdBy);
-  console.log("[createRaffle] Target Admin:", ADMIN_WALLET);
-  const isAuthorized = await canCreateRaffles(data.createdBy);
-  console.log("[createRaffle] Is authorized:", isAuthorized);
-  if (!isAuthorized) return null;
-
   const endTime = new Date();
   endTime.setHours(endTime.getHours() + data.durationHours);
 
   const raffleType = ADMIN_WALLETS.includes(data.createdBy) ? "official" : "community";
-
-  // Get Display Name
-  let creatorDisplayName = data.displayName || "";
-  if (!creatorDisplayName) {
-    const creatorInfo = await getCreatorInfo(data.createdBy);
-    if (creatorInfo) {
-      creatorDisplayName = creatorInfo.displayName || "";
-    }
-  }
 
   const raffleId = generateId();
 
@@ -272,8 +116,7 @@ export const createRaffle = async (data: {
       end_time: endTime.toISOString(),
       is_free: data.isFree,
       created_by: data.createdBy,
-      raffle_type: raffleType,
-      creator_display_name: creatorDisplayName
+      raffle_type: raffleType
     })
     .select()
     .single();

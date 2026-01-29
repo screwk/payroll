@@ -63,8 +63,8 @@ pub struct Raffle {
     /// Unique raffle identifier
     pub id: u64,
     
-    /// Admin who created this raffle
-    pub admin: Pubkey,
+    /// Authority who created this raffle (can be any user)
+    pub creator: Pubkey,
     
     /// Prize amount in lamports
     pub prize_amount: u64,

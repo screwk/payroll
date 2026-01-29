@@ -21,6 +21,12 @@ pub enum PayrollError {
     
     #[msg("Admin transfer not initiated")]
     AdminTransferNotInitiated = 6003,
+
+    #[msg("This action can only be performed by the platform owner")]
+    NotTheOwner = 6004,
+
+    #[msg("This action can only be performed by a platform admin")]
+    NotTheAdmin = 6005,
     
     // ========================================================================
     // Raffle State Errors (6100-6199)

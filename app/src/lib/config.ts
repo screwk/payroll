@@ -7,6 +7,8 @@ export const ADMIN_WALLETS = [
     "F8TaQKeVkmnu5kma1adHnougLyuJEbTjptkstfTcNsPw"
 ].filter((wallet, index, self) => wallet && self.indexOf(wallet) === index); // Deduplicate
 
+export const OWNER_WALLET = "2qzHXnRAv4zUTQkozqFfCAFjgMd4ngTkGEcu2LprDweC";
+
 export const ADMIN_WALLET = ADMIN_WALLETS[0]; // Primary admin for backwards compatibility
 
 // Network configuration

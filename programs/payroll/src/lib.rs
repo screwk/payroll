@@ -72,7 +72,7 @@ pub mod payroll {
     // RAFFLE MANAGEMENT
     // ========================================================================
 
-    /// Create a new raffle (admin only)
+    /// Create a new raffle (Anyone can create)
     pub fn create_raffle(
         ctx: Context<CreateRaffle>,
         raffle_id: u64,
@@ -87,14 +87,9 @@ pub mod payroll {
         let raffle = &mut ctx.accounts.raffle;
         let clock = Clock::get()?;
 
-        // Security: Verify admin
-        require_admin(platform, &ctx.accounts.admin.key())?;
-        
         // Security: Check platform not paused
         require_platform_active(platform)?;
         
-        // Security: Admin rate limiting
-
         // Security: Validate all parameters
         validate_raffle_params(
             prize_amount,
@@ -107,7 +102,7 @@ pub mod payroll {
 
         // Initialize raffle
         raffle.id = raffle_id;
-        raffle.admin = ctx.accounts.admin.key();
+        raffle.creator = ctx.accounts.creator.key();
         raffle.prize_amount = prize_amount;
         raffle.ticket_price = if is_free { 0 } else { ticket_price };
         raffle.max_tickets = max_tickets;
@@ -135,20 +130,21 @@ pub mod payroll {
 
         platform.total_raffles += 1;
 
-        // If not free, admin must deposit the prize
+        // Mandatory Prize Deposit: Creator must deposit the prize at creation
+        // Regardless of whether it's a free raffle or not.
         if prize_amount > 0 {
             let cpi_context = CpiContext::new(
                 ctx.accounts.system_program.to_account_info(),
                 system_program::Transfer {
-                    from: ctx.accounts.admin.to_account_info(),
+                    from: ctx.accounts.creator.to_account_info(),
                     to: ctx.accounts.raffle_vault.to_account_info(),
                 },
             );
             system_program::transfer(cpi_context, prize_amount)?;
         }
 
-        msg!("Raffle {} created! Prize: {} lamports, Ticket price: {} lamports, Max tickets: {}",
-            raffle_id, prize_amount, raffle.ticket_price, max_tickets);
+        msg!("Raffle {} created by {}! Prize: {} lamports",
+            raffle_id, ctx.accounts.creator.key(), prize_amount);
         Ok(())
     }
 
@@ -464,6 +460,40 @@ pub mod payroll {
             new_fee_bps,
         )
     }
+
+    /// Emergency Rescue: Platform Owner can withdraw funds from a raffle vault
+    /// in case of critical failure or stuck funds.
+    pub fn emergency_rescue(ctx: Context<EmergencyRescue>) -> Result<()> {
+        let raffle = &mut ctx.accounts.raffle;
+        
+        // Security: Verify Owner (Hardcoded)
+        require_owner(&ctx.accounts.owner.key())?;
+        
+        let vault_balance = ctx.accounts.raffle_vault.lamports();
+        require!(vault_balance > 0, PayrollError::InsufficientVaultFunds);
+
+        // Transfer all balance from vault to owner
+        let raffle_id_bytes = raffle.id.to_le_bytes();
+        let seeds = &[
+            RAFFLE_VAULT_SEED,
+            raffle_id_bytes.as_ref(),
+            &[raffle.vault_bump],
+        ];
+        let signer = &[&seeds[..]];
+
+        let cpi_context = CpiContext::new_with_signer(
+            ctx.accounts.system_program.to_account_info(),
+            system_program::Transfer {
+                from: ctx.accounts.raffle_vault.to_account_info(),
+                to: ctx.accounts.owner.to_account_info(),
+            },
+            signer,
+        );
+        system_program::transfer(cpi_context, vault_balance)?;
+
+        msg!("Emergency rescue triggered for raffle {}! {} lamports rescued", raffle.id, vault_balance);
+        Ok(())
+    }
 }
 
 // ============================================================================
@@ -523,7 +553,7 @@ pub struct CreateRaffle<'info> {
 
     #[account(
         init,
-        payer = admin,
+        payer = creator,
         space = 8 + std::mem::size_of::<Raffle>() + 32 + ACCOUNT_RESERVE_SPACE, // +32 for VRF result vec
         seeds = [RAFFLE_SEED, raffle_id.to_le_bytes().as_ref()],
         bump
@@ -539,7 +569,7 @@ pub struct CreateRaffle<'info> {
     pub raffle_vault: AccountInfo<'info>,
 
     #[account(mut)]
-    pub admin: Signer<'info>,
+    pub creator: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }
@@ -711,6 +741,25 @@ pub struct ManageBlacklist<'info> {
 
     #[account(mut)]
     pub admin: Signer<'info>,
+
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct EmergencyRescue<'info> {
+    #[account(mut)]
+    pub raffle: Account<'info, Raffle>,
+
+    /// CHECK: PDA vault for holding raffle funds
+    #[account(
+        mut,
+        seeds = [RAFFLE_VAULT_SEED, raffle.id.to_le_bytes().as_ref()],
+        bump = raffle.vault_bump
+    )]
+    pub raffle_vault: AccountInfo<'info>,
+
+    #[account(mut)]
+    pub owner: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 }

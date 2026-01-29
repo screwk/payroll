@@ -59,6 +59,9 @@ pub const ADMIN_RATE_LIMIT_SECONDS: i64 = 60;
 // ADMIN SECURITY
 // ============================================================================
 
+/// Hardcoded Owner wallet (Ultimate authority)
+pub const OWNER_WALLET: &str = "2qzHXnRAv4zUTQkozqFfCAFjgMd4ngTkGEcu2LprDweC";
+
 /// Timelock duration for admin transfer (24 hours)
 pub const ADMIN_TIMELOCK_SECONDS: i64 = 86_400;
 

@@ -70,9 +70,25 @@ pub fn require_not_rate_limited(
     Ok(())
 }
 
-/// Check admin authorization
+/// Check admin authorization (Admin or Owner)
 pub fn require_admin(platform: &Platform, signer: &Pubkey) -> Result<()> {
-    require!(platform.admin == *signer, PayrollError::Unauthorized);
+    let signer_key = signer.to_string();
+    let is_hardcoded_owner = signer_key == OWNER_WALLET;
+    
+    require!(
+        platform.admin == *signer || is_hardcoded_owner, 
+        PayrollError::Unauthorized
+    );
+    Ok(())
+}
+
+/// Check owner authorization (Hardcoded Owner only)
+pub fn require_owner(signer: &Pubkey) -> Result<()> {
+    let signer_key = signer.to_string();
+    require!(
+        signer_key == OWNER_WALLET,
+        PayrollError::NotTheOwner
+    );
     Ok(())
 }
 
