@@ -464,7 +464,7 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
                       </div>
-                      <p className="text-emerald-600 font-semibold mb-2">You're already entered!</p>
+                      <p className="text-emerald-600 font-semibold mb-2">You&apos;re already entered!</p>
                       <p className="text-gray-500 text-sm">
                         You have {userTickets} free ticket{userTickets > 1 ? 's' : ''}.
                         <br />

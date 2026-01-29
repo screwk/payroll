@@ -120,7 +120,7 @@ export default function CreateRafflePage() {
                                         <input type="checkbox" name="isFree" checked={formData.isFree} onChange={handleChange} className="w-5 h-5 rounded border-gray-300 text-emerald-600" />
                                         <div>
                                             <p className="font-bold text-gray-900">Free Giveaway</p>
-                                            <p className="text-xs text-gray-500 font-medium">Users don't pay. <span className="text-orange-600 font-bold">You must still deposit the prize.</span></p>
+                                            <p className="text-xs text-gray-500 font-medium">Users don&apos;t pay. <span className="text-orange-600 font-bold">You must still deposit the prize.</span></p>
                                         </div>
                                     </label>
 

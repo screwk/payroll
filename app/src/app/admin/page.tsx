@@ -328,7 +328,7 @@ export default function AdminPage() {
               {activeTab === "pending" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
                   <h3 className="font-display font-bold text-lg mb-4">Awaiting Deposits</h3>
-                  <p className="text-xs text-gray-500 mb-4">Raffles created but not yet active because the prize deposit hasn't been confirmed.</p>
+                  <p className="text-xs text-gray-500 mb-4">Raffles created but not yet active because the prize deposit hasn&apos;t been confirmed.</p>
                   <div className="space-y-3">
                     {existingRaffles.filter(r => r.status === 'waiting_deposit').map(raffle => (
                       <div key={raffle.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-between">

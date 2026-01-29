@@ -34,7 +34,7 @@ export default function AnimatedCounter({
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Easing simples
       const eased = 1 - Math.pow(1 - progress, 2);
       const current = startValue + (value - startValue) * eased;
@@ -49,6 +49,7 @@ export default function AnimatedCounter({
     };
 
     requestAnimationFrame(animate);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, duration]);
 
   return (

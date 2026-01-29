@@ -68,7 +68,7 @@ const CardNav = ({
                 contentEl.style.height = 'auto';
 
                 // Trigger reflow
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                // eslint-disable-next-line no-unused-vars
                 const _ = contentEl.offsetHeight;
 
                 const topBar = 60;
