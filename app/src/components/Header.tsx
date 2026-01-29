@@ -121,9 +121,9 @@ export default function Header() {
                 </Link>
               )}
 
-              {(isAdmin || (connected && isCreator)) && (
+              {(isAdmin || connected) && (
                 <Link
-                  href={isAdmin ? "/admin" : "/community/create"}
+                  href={isAdmin ? "/admin" : "/create"}
                 >
                   <motion.button
                     whileHover={{ scale: 1.05 }}

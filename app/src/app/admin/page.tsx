@@ -14,10 +14,11 @@ import {
   Participant,
 } from "@/lib/raffleStorage";
 import { shortenAddress } from "@/types/payroll";
-import { IS_MAINNET, ADMIN_WALLETS, OWNER_WALLET } from "@/lib/config";
+import { IS_MAINNET, ADMIN_WALLETS, OWNER_WALLET, HOT_WALLET, RPC_ENDPOINT } from "@/lib/config";
+import { Connection, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export default function AdminPage() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, sendTransaction } = useWallet();
   const { isAdmin, isOwner } = useAdmin();
   const [isCreating, setIsCreating] = useState(false);
   const [existingRaffles, setExistingRaffles] = useState<StoredRaffle[]>([]);
@@ -54,12 +55,19 @@ export default function AdminPage() {
     e.preventDefault();
     if (!isAdmin || !publicKey) return;
 
+    const prize = parseFloat(formData.prizeAmount);
+    if (isNaN(prize) || prize <= 0) {
+      alert("Please enter a valid prize amount.");
+      return;
+    }
+
     setIsCreating(true);
     try {
+      // 1. Create record in Supabase (status: waiting_deposit)
       const newRaffle = await createRaffle({
-        title: formData.title || `Raffle ${formData.prizeAmount} SOL`,
+        title: formData.title || `Raffle ${prize} SOL`,
         description: formData.description,
-        prizeAmount: parseFloat(formData.prizeAmount),
+        prizeAmount: prize,
         ticketPrice: formData.isFree ? 0 : parseFloat(formData.ticketPrice),
         maxTickets: parseInt(formData.maxTickets),
         durationHours: parseInt(formData.durationHours),
@@ -69,6 +77,18 @@ export default function AdminPage() {
       if (!newRaffle) {
         throw new Error("Failed to create raffle in database.");
       }
+
+      // 2. Perform Solana Transfer (Deposit Prize to Hot Wallet)
+      const connection = new Connection(RPC_ENDPOINT, "confirmed");
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(HOT_WALLET),
+          lamports: prize * LAMPORTS_PER_SOL,
+        })
+      );
+
+      const signature = await sendTransaction(transaction, connection);
 
       setFormData({
         prizeAmount: "",
@@ -80,7 +100,7 @@ export default function AdminPage() {
         description: "",
       });
 
-      alert("Raffle created successfully!");
+      alert(`Raffle created! Deposit of ${prize} SOL sent (Signature: ${signature.slice(0, 8)}...). It will be active soon.`);
       loadData();
     } catch (error: any) {
       console.error("Failed to create raffle:", error);

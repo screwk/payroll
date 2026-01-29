@@ -212,7 +212,7 @@ export const toRaffleDisplay = (stored: StoredRaffle): RaffleDisplay => {
 export const getRafflesForDisplay = async (): Promise<RaffleDisplay[]> => {
   const raffles = await getRaffles();
   return raffles
-    .filter(r => r.status !== 'waiting_deposit' || r.creatorWallet === ADMIN_WALLETS[0]) // Only show active or admin-waiting
+    .filter(r => r.status !== 'waiting_deposit') // Show all that are not waiting deposit
     .map(toRaffleDisplay);
 };
 
@@ -234,6 +234,5 @@ export const getUserEntries = async (wallet: string): Promise<(Participant & { r
 };
 
 export const canCreateRaffles = (wallet: string | null | undefined): boolean => {
-  if (!wallet) return false;
-  return ADMIN_WALLETS.includes(wallet);
+  return !!wallet; // Anyone with a wallet can create!
 };
