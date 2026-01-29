@@ -6,9 +6,9 @@ import bs58 from "bs58";
  * Server-side utility to interact with the Hot Wallet
  */
 export const getHotWalletKeypair = () => {
-    let secretKeyString = process.env.PAYROLL_SECRET_KEY;
+    let secretKeyString = process.env.PAYROLL_APP_SECRET;
     if (!secretKeyString) {
-        throw new Error("PAYROLL_SECRET_KEY not found in environment variables");
+        throw new Error("PAYROLL_APP_SECRET not found. Please add this variable to Vercel.");
     }
 
     // Clean the string: remove whitespace and any accidental wrapping quotes
