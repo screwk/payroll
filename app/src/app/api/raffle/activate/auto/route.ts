@@ -81,8 +81,7 @@ export async function GET(req: NextRequest) {
                 const { error: updateError } = await supabaseAdmin
                     .from('raffles')
                     .update({
-                        status: 'active',
-                        activated_at: new Date().toISOString()
+                        status: 'active'
                     })
                     .eq('id', raffle.id);
 

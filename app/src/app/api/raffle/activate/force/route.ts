@@ -18,8 +18,7 @@ export async function POST(req: NextRequest) {
         const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({
-                status: 'active',
-                activated_at: new Date().toISOString()
+                status: 'active'
             })
             .eq('id', raffleId);
 
