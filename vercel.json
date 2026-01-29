@@ -10,7 +10,7 @@
         },
         {
             "path": "/api/raffle/activate/auto",
-            "schedule": "*/10 * * * *"
+            "schedule": "0 2 * * *"
         }
     ]
 }
