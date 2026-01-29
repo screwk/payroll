@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
         // 2. Fetch raffle data to calculate revenue increase
         const { data: raffle, error: raffleError } = await supabaseAdmin
             .from('raffles')
-            .select('ticket_price, tickets_sold, max_tickets')
+            .select('ticket_price, tickets_sold, max_tickets, total_revenue')
             .eq('id', raffleId)
             .single();
 
