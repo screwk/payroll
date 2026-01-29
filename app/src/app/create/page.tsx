@@ -28,9 +28,17 @@ export default function CreateRafflePage() {
         const prize = parseFloat(formData.prizeAmount);
         const price = formData.isFree ? 0 : parseFloat(formData.ticketPrice);
 
+        const duration = parseInt(formData.durationHours);
+
         // Validation: Ticket price cannot be more than 50% of prize
         if (!formData.isFree && price > prize * 0.5) {
             alert("Security Rule: Ticket price cannot be more than 50% of the prize amount.");
+            return;
+        }
+
+        // Validation: Max duration 48 hours
+        if (duration > 48) {
+            alert("Maximum duration is 48 hours (2 days).");
             return;
         }
 
@@ -155,8 +163,22 @@ export default function CreateRafflePage() {
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">Duration (Hours)</label>
-                                            <input type="number" name="durationHours" value={formData.durationHours} onChange={handleChange} placeholder="24" min="1" required className="w-full px-4 py-3 border border-gray-200 rounded-xl" />
+                                            <input type="number" name="durationHours" value={formData.durationHours} onChange={handleChange} placeholder="24" min="1" max="48" required className="w-full px-4 py-3 border border-gray-200 rounded-xl" />
+                                            <p className="text-[10px] text-gray-400 mt-1">Máximo: 48 horas (2 dias)</p>
                                         </div>
+                                    </div>
+
+                                    {/* Platform Rules Notice */}
+                                    <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 space-y-2">
+                                        <p className="text-xs font-bold text-orange-800 flex items-center gap-2">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            Regras da Plataforma
+                                        </p>
+                                        <ul className="text-[10px] text-orange-700 list-disc ml-4 space-y-1">
+                                            <li>O pagamento do prémio será efetuado em <strong>ATÉ 24 horas</strong> após o fim da rifa.</li>
+                                            <li>Se houver pelo menos <strong>2 participantes</strong> quando o tempo acabar, o sorteio será automático.</li>
+                                            <li><strong>NÃO HÁ REEMBOLSOS</strong> após a criação da rifa.</li>
+                                        </ul>
                                     </div>
 
                                     <button type="submit" disabled={isCreating} className="w-full py-4 bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-xl font-bold text-lg shadow-lg hover:scale-[1.01] transition-all">

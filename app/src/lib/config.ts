@@ -30,7 +30,7 @@ export const MAX_PRIZE_AMOUNT = 10000; // 10,000 SOL maximum
 export const MIN_TICKETS = 2;
 export const MAX_TICKETS = 10000;
 export const MIN_DURATION_HOURS = 1;
-export const MAX_DURATION_HOURS = 168; // 7 days
+export const MAX_DURATION_HOURS = 48; // 2 days maximum
 
 // Free raffle limits - max tickets per wallet for free raffles
 export const FREE_RAFFLE_MAX_TICKETS_PER_WALLET = 1; // Each wallet can only get 1 free ticket
