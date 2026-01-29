@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRaffleById, getRaffleParticipants } from "@/lib/raffleStorage";
 import { sendPrize } from "@/lib/serverWallet";
 import { ADMIN_WALLETS } from "@/lib/config";
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 6. Update Database
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({
                 status: 'pending_payout', // Entering 24h quarantine

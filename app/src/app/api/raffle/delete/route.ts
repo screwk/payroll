@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { ADMIN_WALLETS } from "@/lib/config";
 
 export async function POST(req: NextRequest) {
@@ -11,33 +11,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized: Wallet not in admin list" }, { status: 401 });
         }
 
-        // 2. Initialize Supabase with Service Role (Bypasses RLS)
-        const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-        const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-
-        if (!supabaseUrl || !serviceRoleKey) {
-            console.error("[API Delete] Missing configuration!");
-            console.log("process.env.SUPABASE_URL present:", !!process.env.SUPABASE_URL);
-            console.log("process.env.NEXT_PUBLIC_SUPABASE_URL present:", !!process.env.NEXT_PUBLIC_SUPABASE_URL);
-            console.log("process.env.SUPABASE_SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
-            return NextResponse.json({ error: "Server configuration missing key in Vercel" }, { status: 500 });
-        }
-
-        // Safe logging for debugging
-        console.log(`[API Delete] URL in use: ${supabaseUrl}`);
-        console.log(`[API Delete] Key Prefix: ${serviceRoleKey.substring(0, 10)}...`);
-        console.log(`[API Delete] Key Length: ${serviceRoleKey.length}`);
-
-        const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-            auth: {
-                autoRefreshToken: false,
-                persistSession: false
-            }
-        });
-
         console.log(`[API Delete] Admin ${adminWallet} is deleting raffle ${raffleId}`);
 
-        // 3. Delete Tickets first
+        // 2. Delete Tickets first
         const { error: partError, count: partCount } = await supabaseAdmin
             .from('tickets')
             .delete({ count: 'exact' })
@@ -48,7 +24,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: `Failed to clear participants: ${partError.message}` }, { status: 500 });
         }
 
-        // 4. Delete Raffle
+        // 3. Delete Raffle
         const { error: raffleError, count: raffleCount } = await supabaseAdmin
             .from('raffles')
             .delete({ count: 'exact' })

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { getRaffleById } from "@/lib/raffleStorage";
 import { sendPrize } from "@/lib/serverWallet";
 import { OWNER_WALLET, PLATFORM_FEE_BPS } from "@/lib/config";
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Update Database
-        const { error: updateError } = await supabase
+        const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({
                 status: 'completed',

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendPrize } from "@/lib/serverWallet";
 
 export async function GET(req: NextRequest) {
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
 
         // 2. Fetch active raffles that have ended
         const now = new Date().toISOString();
-        const { data: raffles, error } = await supabase
+        const { data: raffles, error } = await supabaseAdmin
             .from('raffles')
             .select('*')
             .eq('status', 'active')
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
 
         for (const raffle of raffles) {
             // Query participants
-            const { data: participants } = await supabase
+            const { data: participants } = await supabaseAdmin
                 .from('tickets')
                 .select('*')
                 .eq('raffle_id', raffle.id);
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
             try {
                 const signature = await sendPrize(winnerWallet, raffle.prize_amount);
 
-                await supabase.from('raffles').update({
+                await supabaseAdmin.from('raffles').update({
                     status: 'pending_payout',
                     winner_wallet: winnerWallet,
                     prize_tx_signature: signature,

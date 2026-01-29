@@ -146,18 +146,49 @@ export default function AdminPage() {
   const handleSync = async () => {
     setIsSyncing(true);
     try {
+      console.log("[Admin] Starting manual sync...");
       const response = await fetch("/api/raffle/activate/auto");
       const result = await response.json();
-      if (result.success) {
-        alert("Sync complete: " + (result.results?.length || 0) + " activations attempted.");
+
+      if (response.ok && result.success) {
+        const count = result.results?.filter((r: any) => r.status === 'activated').length || 0;
+        alert(`Sync complete!\n${count} raffles activated.\nCheck logs if some didn't activate.`);
         loadData();
       } else {
-        alert("Sync failed: " + result.error);
+        const errorMsg = result.error || result.message || "Unknown server error";
+        alert("Sync failed: " + errorMsg);
+        console.error("[Admin] Sync error details:", result);
       }
     } catch (err: any) {
-      alert("Sync error: " + err.message);
+      console.error("[Admin] Sync fetch error:", err);
+      alert("Sync connection error: " + (err.message || String(err)));
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const [isForcing, setIsForcing] = useState<string | null>(null);
+  const handleForceActivate = async (raffleId: string) => {
+    if (!window.confirm("ARE YOU SURE? Only force activate if you verified the deposit manually on Solscan.")) return;
+
+    setIsForcing(raffleId);
+    try {
+      const res = await fetch("/api/raffle/activate/force", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ raffleId, adminWallet: publicKey?.toString() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("Raffle forced to live!");
+        loadData();
+      } else {
+        alert("Force activate failed: " + (data.error || "Unknown error"));
+      }
+    } catch (err: any) {
+      alert("Force activate error: " + (err.message || String(err)));
+    } finally {
+      setIsForcing(null);
     }
   };
 
@@ -424,10 +455,23 @@ export default function AdminPage() {
                           <p className="font-bold text-sm">{raffle.title}</p>
                           <p className="text-xs text-gray-500">Target: {raffle.prizeAmount} SOL</p>
                           <p className="text-[9px] font-mono text-orange-600">Creator: {shortenAddress(raffle.creatorWallet, 4)}</p>
+                          <p className="text-[8px] text-gray-400 font-mono mt-1">ID: {raffle.id}</p>
                         </div>
-                        <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleForceActivate(raffle.id)}
+                            disabled={isForcing === raffle.id}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isForcing === raffle.id
+                                ? "bg-gray-200 text-gray-400"
+                                : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                              }`}
+                          >
+                            {isForcing === raffle.id ? "Activating..." : "Force Live ⚡"}
+                          </button>
+                          <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
