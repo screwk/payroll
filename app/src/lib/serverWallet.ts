@@ -18,25 +18,52 @@ export const getHotWalletKeypair = () => {
         secretKeyString = secretKeyString.slice(1, -1).trim();
     }
 
-    // Try JSON array format first (standard Solana CLI id.json format)
+    // 1. Try Base58 format (standard Phantom/Web Wallet export format)
+    // We try this FIRST because it's the cleanest format.
+    try {
+        // If it looks like base58 (alphanumeric, no brackets)
+        if (!secretKeyString.startsWith("[")) {
+            const decoded = bs58.decode(secretKeyString);
+            if (decoded.length === 64) {
+                return Keypair.fromSecretKey(decoded);
+            }
+        }
+    } catch (err) {
+        // Continue to other formats
+    }
+
+    // 2. Robust JSON Array Parsing (Regex based)
+    // This handles broken JSON, extra commas, "Uint8Array" prefixes, etc.
+    try {
+        // Extract all numbers from the string
+        const matches = secretKeyString.match(/\d+/g);
+        if (matches) {
+            const numbers = matches.map(Number);
+            if (numbers.length === 64) {
+                const secretKey = Uint8Array.from(numbers);
+                return Keypair.fromSecretKey(secretKey);
+            }
+        }
+    } catch (err) {
+        console.warn("[getHotWalletKeypair] Failed regex parsing");
+    }
+
+    // 3. Last Resort: Standard JSON Parse
     try {
         if (secretKeyString.startsWith("[")) {
             const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
             return Keypair.fromSecretKey(secretKey);
         }
     } catch (err) {
-        console.warn("[getHotWalletKeypair] Failed to parse as JSON array, trying Base58...");
+        // Fail
     }
 
-    // Try Base58 format (standard Phantom/Web Wallet export format)
-    try {
-        const decoded = bs58.decode(secretKeyString);
-        return Keypair.fromSecretKey(decoded);
-    } catch (err) {
-        // Log diagnostic info (safely)
-        console.error(`[getHotWalletKeypair] Format error. Length: ${secretKeyString.length}, Starts: ${secretKeyString.substring(0, 3)}..., Ends: ...${secretKeyString.substring(secretKeyString.length - 3)}`);
-        throw new Error("Invalid PAYROLL_SECRET_KEY format. Expected a JSON array [1,2,3...] OR a Base58 string.");
-    }
+    // Capture first/last chars for debugging (masked)
+    const debugStart = secretKeyString.substring(0, 5);
+    const debugEnd = secretKeyString.substring(secretKeyString.length - 5);
+    console.error(`[getHotWalletKeypair] FAILED to parse key. Input length: ${secretKeyString.length}. Start: '${debugStart}', End: '${debugEnd}'`);
+
+    throw new Error(`Invalid PAYROLL_SECRET_KEY format (Len: ${secretKeyString.length}). Please use the Base58 format (starts with ~15 chars, ends with ~15 chars).`);
 };
 
 /**
