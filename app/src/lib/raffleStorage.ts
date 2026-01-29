@@ -215,3 +215,25 @@ export const getRafflesForDisplay = async (): Promise<RaffleDisplay[]> => {
     .filter(r => r.status !== 'waiting_deposit' || r.creatorWallet === ADMIN_WALLETS[0]) // Only show active or admin-waiting
     .map(toRaffleDisplay);
 };
+
+export const getUserEntries = async (wallet: string): Promise<(Participant & { raffle?: StoredRaffle })[]> => {
+  const { data, error } = await supabase
+    .from('tickets')
+    .select('*, raffles (*)')
+    .eq('user_wallet', wallet);
+
+  if (error) {
+    console.error("[getUserEntries] Error:", error);
+    return [];
+  }
+
+  return data.map(row => ({
+    ...mapParticipantRow(row),
+    raffle: row.raffles ? mapRaffleRow(row.raffles) : undefined
+  }));
+};
+
+export const canCreateRaffles = (wallet: string | null | undefined): boolean => {
+  if (!wallet) return false;
+  return ADMIN_WALLETS.includes(wallet);
+};

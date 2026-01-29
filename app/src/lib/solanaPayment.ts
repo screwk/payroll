@@ -8,7 +8,7 @@ import {
   SystemProgram,
   LAMPORTS_PER_SOL,
 } from "@solana/web3.js";
-import { ADMIN_WALLET, RPC_ENDPOINT } from "./config";
+import { HOT_WALLET, RPC_ENDPOINT } from "./config";
 
 // Create connection to Solana
 export const getConnection = (): Connection => {
@@ -33,21 +33,21 @@ export const createTransferTransaction = async (
   recipientWallet?: string // wallet address to receive payment
 ): Promise<Transaction> => {
   const connection = getConnection();
-  
+
   // Use provided recipient or default to admin wallet
-  const recipient = recipientWallet || ADMIN_WALLET;
+  const recipient = recipientWallet || HOT_WALLET;
   const toPubkey = new PublicKey(recipient);
-  
+
   // Get latest blockhash
   const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-  
+
   // Create transaction
   const transaction = new Transaction({
     blockhash,
     lastValidBlockHeight,
     feePayer: fromPubkey,
   });
-  
+
   // Add transfer instruction
   transaction.add(
     SystemProgram.transfer({
@@ -56,7 +56,7 @@ export const createTransferTransaction = async (
       lamports: solToLamports(amount),
     })
   );
-  
+
   return transaction;
 };
 
@@ -65,7 +65,7 @@ export const confirmTransaction = async (
   signature: string
 ): Promise<boolean> => {
   const connection = getConnection();
-  
+
   try {
     const confirmation = await connection.confirmTransaction(signature, "confirmed");
     return !confirmation.value.err;
@@ -87,23 +87,23 @@ export const getTransactionStatus = async (
   signature: string
 ): Promise<"success" | "failed" | "pending"> => {
   const connection = getConnection();
-  
+
   try {
     const status = await connection.getSignatureStatus(signature);
-    
+
     if (!status.value) {
       return "pending";
     }
-    
+
     if (status.value.err) {
       return "failed";
     }
-    
-    if (status.value.confirmationStatus === "confirmed" || 
-        status.value.confirmationStatus === "finalized") {
+
+    if (status.value.confirmationStatus === "confirmed" ||
+      status.value.confirmationStatus === "finalized") {
       return "success";
     }
-    
+
     return "pending";
   } catch (error) {
     console.error("Error checking transaction status:", error);

@@ -2,7 +2,7 @@
 
 import { createContext, useContext, ReactNode, useMemo, useState, useEffect } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { ADMIN_WALLETS, ADMIN_WALLET, OWNER_WALLET } from "@/lib/config";
+import { ADMIN_WALLETS, OWNER_WALLET } from "@/lib/config";
 
 interface AdminContextType {
   isAdmin: boolean;

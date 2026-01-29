@@ -35,8 +35,28 @@ export default function MyTicketsPage() {
     }
 
     // Get user entries
-    const userEntries = await getUserEntries(publicKey.toString());
-    setEntries(userEntries);
+    const rawEntries = await getUserEntries(publicKey.toString());
+
+    // Map to UserEntry interface
+    const mappedEntries: UserEntry[] = rawEntries.map(entry => {
+      const raffle = entry.raffle;
+      return {
+        wallet: entry.wallet,
+        raffleId: entry.raffleId,
+        tickets: entry.quantity,
+        amountPaid: raffle ? raffle.ticketPrice * entry.quantity : 0,
+        isFree: raffle ? raffle.ticketPrice === 0 : false,
+        txSignature: entry.txSignature,
+        enteredAt: entry.createdAt,
+        status: raffle ? raffle.status : 'unknown',
+        rafflePrize: raffle ? raffle.prizeAmount : 0,
+        raffleEndTime: raffle ? raffle.endTime : new Date().toISOString(),
+        isWinner: raffle ? raffle.winnerWallet === entry.wallet : false,
+        raffleIsDrawn: raffle ? raffle.status !== 'active' && raffle.status !== 'waiting_deposit' : false,
+      };
+    });
+
+    setEntries(mappedEntries);
   }, [publicKey]);
 
   useEffect(() => {
@@ -75,7 +95,7 @@ export default function MyTicketsPage() {
 
   return (
     <div className="min-h-screen">
-      
+
 
       <main className="relative pt-24 pb-16 px-4">
         <div className="max-w-4xl mx-auto">

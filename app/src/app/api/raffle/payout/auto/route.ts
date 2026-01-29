@@ -14,6 +14,7 @@ export async function GET(req: NextRequest) {
 
         const { data: raffles, error } = await supabase
             .from('raffles')
+            .select('*')
             .eq('status', 'pending_payout')
             .lt('drawn_at', quarantineTime.toISOString());
 
