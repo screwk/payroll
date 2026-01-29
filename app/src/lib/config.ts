@@ -17,7 +17,7 @@ export const RPC_ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || `https://a
 export const IS_MAINNET = NETWORK === "mainnet-beta";
 
 // Hot Wallet address (the one you just generated)
-export const HOT_WALLET = "5Vm2Lr7tBuqUEkWiQd2CUCqDj6nXF3L8sEyHkdEZVtfy";
+export const HOT_WALLET = "6veTDx5FzjFF6yjMHByDBimPZQhS97zmBgvi4LGqdv52";
 
 // Fee configuration
 export const PLATFORM_FEE_BPS = 300; // 3% platform fee
