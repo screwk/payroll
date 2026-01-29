@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getRaffleById } from "@/lib/raffleStorage";
 import { sendPrize } from "@/lib/serverWallet";
 import { OWNER_WALLET, PLATFORM_FEE_BPS } from "@/lib/config";
 
@@ -9,14 +8,18 @@ export async function POST(req: NextRequest) {
         const { raffleId, ownerWallet } = await req.json();
 
         // 1. Authorization check - Only OWNER can manually trigger
-        // (Automated script would use a different bypass/secret)
         if (ownerWallet !== OWNER_WALLET) {
             return NextResponse.json({ error: "Unauthorized. Only Owner can trigger payouts." }, { status: 403 });
         }
 
-        // 2. Fetch raffle data
-        const raffle = await getRaffleById(raffleId);
-        if (!raffle) {
+        // 2. Fetch raffle data using supabaseAdmin
+        const { data: raffle, error: raffleError } = await supabaseAdmin
+            .from('raffles')
+            .select('*')
+            .eq('id', raffleId)
+            .single();
+
+        if (raffleError || !raffle) {
             return NextResponse.json({ error: "Raffle not found" }, { status: 404 });
         }
 
@@ -25,8 +28,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Calculate Payout
-        // The Hot Wallet has the TOTAL_REVENUE (since prize was already sent)
-        const grossRevenue = raffle.totalRevenue;
+        const grossRevenue = raffle.total_revenue || 0;
         const platformFee = (grossRevenue * PLATFORM_FEE_BPS) / 10000;
         const payoutAmount = grossRevenue - platformFee;
 
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
         let payoutTxSignature: string | null = null;
         if (payoutAmount > 0) {
             try {
-                payoutTxSignature = await sendPrize(raffle.creatorWallet, payoutAmount);
+                payoutTxSignature = await sendPrize(raffle.creator_wallet, payoutAmount);
             } catch (err: any) {
                 console.error("[Payout API] Payout error:", err);
                 return NextResponse.json({ error: "Failed to send payout: " + err.message }, { status: 500 });

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { getRaffleById, getRaffleParticipants } from "@/lib/raffleStorage";
 import { sendPrize } from "@/lib/serverWallet";
 import { ADMIN_WALLETS } from "@/lib/config";
 
@@ -13,9 +12,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
         }
 
-        // 2. Fetch raffle data
-        const raffle = await getRaffleById(raffleId);
-        if (!raffle) {
+        // 2. Fetch raffle data using supabaseAdmin (bypass RLS)
+        const { data: raffle, error: raffleError } = await supabaseAdmin
+            .from('raffles')
+            .select('*')
+            .eq('id', raffleId)
+            .single();
+
+        if (raffleError || !raffle) {
             return NextResponse.json({ error: "Raffle not found" }, { status: 404 });
         }
 
@@ -23,18 +27,29 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Raffle is not in active status" }, { status: 400 });
         }
 
-        // 3. Fetch participants
-        const participants = await getRaffleParticipants(raffleId);
+        // 3. Fetch participants using supabaseAdmin (bypass RLS)
+        const { data: participants, error: partError } = await supabaseAdmin
+            .from('tickets')
+            .select('*')
+            .eq('raffle_id', raffleId);
+
+        if (partError || !participants) {
+            return NextResponse.json({ error: "Failed to fetch participants" }, { status: 500 });
+        }
+
         if (participants.length < 2) {
-            return NextResponse.json({ error: "Not enough participants to draw (min 2)" }, { status: 400 });
+            console.error(`[Draw API] Not enough participants for raffle ${raffleId}. Count: ${participants.length}`);
+            return NextResponse.json({
+                error: `Not enough participants to draw (min 2). Found only ${participants.length}.`,
+                found: participants.length
+            }, { status: 400 });
         }
 
         // 4. Randomly pick a winner
-        // Build an array of tickets
         const ticketPool: string[] = [];
         participants.forEach(p => {
             for (let i = 0; i < p.quantity; i++) {
-                ticketPool.push(p.wallet);
+                ticketPool.push(p.user_wallet);
             }
         });
 
@@ -44,17 +59,17 @@ export async function POST(req: NextRequest) {
         // 5. Send prize from Hot Wallet
         let prizeTxSignature: string | null = null;
         try {
-            prizeTxSignature = await sendPrize(winnerWallet, raffle.prizeAmount);
+            prizeTxSignature = await sendPrize(winnerWallet, raffle.prize_amount);
         } catch (err: any) {
             console.error("[Draw API] Payout error:", err);
             return NextResponse.json({ error: "Failed to send prize: " + err.message }, { status: 500 });
         }
 
-        // 6. Update Database
+        // 6. Update Database using supabaseAdmin
         const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({
-                status: 'pending_payout', // Entering 24h quarantine
+                status: 'pending_payout',
                 winner_wallet: winnerWallet,
                 prize_tx_signature: prizeTxSignature
             })

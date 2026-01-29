@@ -6,107 +6,98 @@ import { RPC_ENDPOINT, HOT_WALLET } from "@/lib/config";
 export async function GET(req: NextRequest) {
     try {
         console.log("[Verify API] Starting sync process...");
+        const connection = new Connection(RPC_ENDPOINT, "confirmed");
+        const results = [];
 
-        // 1. Fetch raffles waiting for deposit confirmation
-        // We use supabaseAdmin to ensure we can see all raffles
-        const { data: raffles, error } = await supabaseAdmin
+        // --- PART 1: VERIFY DEPOSITS ---
+        const { data: pendingRaffles, error: fetchError } = await supabaseAdmin
             .from('raffles')
             .select('*')
             .eq('status', 'waiting_deposit')
             .not('deposit_tx_signature', 'is', null);
 
-        if (error) {
-            console.error("[Verify API] Fetch error:", error);
-            throw error;
+        if (fetchError) {
+            console.error("[Verify API] Fetch error:", fetchError);
+            throw fetchError;
         }
 
-        if (!raffles || raffles.length === 0) {
-            console.log("[Verify API] No raffles awaiting deposit.");
-            return NextResponse.json({ success: true, message: "No pending deposits to verify", results: [] });
-        }
+        if (pendingRaffles && pendingRaffles.length > 0) {
+            console.log(`[Verify API] Found ${pendingRaffles.length} raffles to check for deposit.`);
+            for (const raffle of pendingRaffles) {
+                try {
+                    const signature = raffle.deposit_tx_signature;
+                    const tx = await connection.getParsedTransaction(signature, {
+                        commitment: "confirmed",
+                        maxSupportedTransactionVersion: 0
+                    });
 
-        console.log(`[Verify API] Found ${raffles.length} raffles to check.`);
+                    if (!tx || tx.meta?.err) {
+                        results.push({ id: raffle.id, status: 'failed_tx' });
+                        continue;
+                    }
 
-        const connection = new Connection(RPC_ENDPOINT, "confirmed");
-        const results = [];
+                    const accountIndex = tx.transaction.message.accountKeys.findIndex(
+                        ak => ak.pubkey.toString() === HOT_WALLET
+                    );
 
-        for (const raffle of raffles) {
-            try {
-                const signature = raffle.deposit_tx_signature;
-                console.log(`[Verify] Checking raffle ${raffle.id} | Sig: ${signature}`);
+                    if (accountIndex === -1) {
+                        results.push({ id: raffle.id, status: 'wrong_recipient' });
+                        continue;
+                    }
 
-                // Fetch transaction details
-                const tx = await connection.getParsedTransaction(signature, {
-                    commitment: "confirmed",
-                    maxSupportedTransactionVersion: 0
-                });
+                    const preBalance = tx.meta?.preBalances[accountIndex] || 0;
+                    const postBalance = tx.meta?.postBalances[accountIndex] || 0;
+                    const receivedAmount = (postBalance - preBalance) / LAMPORTS_PER_SOL;
 
-                if (!tx) {
-                    console.log(`[Verify] Transaction not found for ${raffle.id}.`);
-                    results.push({ id: raffle.id, status: 'not_found' });
-                    continue;
+                    if (receivedAmount >= (raffle.prize_amount * 0.999)) {
+                        await supabaseAdmin
+                            .from('raffles')
+                            .update({ status: 'active' })
+                            .eq('id', raffle.id);
+                        results.push({ id: raffle.id, status: 'activated', signature });
+                    }
+                } catch (err: any) {
+                    results.push({ id: raffle.id, status: 'error', error: err.message });
                 }
-
-                // Check for errors
-                if (tx.meta?.err) {
-                    console.log(`[Verify] Transaction failed on-chain for ${raffle.id}`);
-                    results.push({ id: raffle.id, status: 'failed_tx' });
-                    continue;
-                }
-
-                // Verify recipient and amount
-                const accountIndex = tx.transaction.message.accountKeys.findIndex(
-                    ak => ak.pubkey.toString() === HOT_WALLET
-                );
-
-                if (accountIndex === -1) {
-                    console.log(`[Verify] HOT_WALLET recipient mismatch for ${raffle.id}`);
-                    results.push({ id: raffle.id, status: 'wrong_recipient' });
-                    continue;
-                }
-
-                const preBalance = tx.meta?.preBalances[accountIndex] || 0;
-                const postBalance = tx.meta?.postBalances[accountIndex] || 0;
-                const receivedAmount = (postBalance - preBalance) / LAMPORTS_PER_SOL;
-
-                // Threshold: allow 0.1% variance for lamport math
-                const expectedAmount = raffle.prize_amount;
-                if (receivedAmount < (expectedAmount * 0.999)) {
-                    console.log(`[Verify] Amount too low for ${raffle.id}. Expected ${expectedAmount}, Got ${receivedAmount}`);
-                    results.push({ id: raffle.id, status: 'amount_mismatch', received: receivedAmount, expected: expectedAmount });
-                    continue;
-                }
-
-                // SUCCESS: Activate Raffle using ADMIN privileges
-                const { error: updateError } = await supabaseAdmin
-                    .from('raffles')
-                    .update({
-                        status: 'active'
-                    })
-                    .eq('id', raffle.id);
-
-                if (updateError) {
-                    console.error(`[Verify] Activation DB error for ${raffle.id}:`, updateError);
-                    throw updateError;
-                }
-
-                console.log(`[Verify] SUCCESS: Raffle ${raffle.id} is now ACTIVE.`);
-                results.push({ id: raffle.id, status: 'activated', signature });
-
-            } catch (err: any) {
-                console.error(`[Verify] Critical loop error for ${raffle.id}:`, err);
-                results.push({ id: raffle.id, status: 'error', error: err.message || String(err) });
             }
         }
 
-        return NextResponse.json({ success: true, results });
+        // --- PART 2: REPAIR TICKET COUNTS ---
+        // We do this for all ACTIVE raffles to ensure the Home page is correct
+        console.log("[Verify API] Repairing ticket counts...");
+        const { data: activeRaffles } = await supabaseAdmin
+            .from('raffles')
+            .select('id, ticket_price')
+            .eq('status', 'active');
+
+        if (activeRaffles) {
+            for (const raffle of activeRaffles) {
+                const { data: tickets } = await supabaseAdmin
+                    .from('tickets')
+                    .select('quantity')
+                    .eq('raffle_id', raffle.id);
+
+                if (tickets) {
+                    const totalSold = tickets.reduce((sum, t) => sum + t.quantity, 0);
+                    const totalRevenue = totalSold * raffle.ticket_price;
+
+                    await supabaseAdmin
+                        .from('raffles')
+                        .update({
+                            tickets_sold: totalSold,
+                            total_revenue: totalRevenue
+                        })
+                        .eq('id', raffle.id);
+
+                    console.log(`[Repair] Raffle ${raffle.id}: ${totalSold} tickets.`);
+                }
+            }
+        }
+
+        return NextResponse.json({ success: true, results, message: "Sync and Repair complete" });
 
     } catch (err: any) {
         console.error("[Verify API] Fatal crash:", err);
-        return NextResponse.json({
-            success: false,
-            error: err.message || String(err),
-            stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        }, { status: 500 });
+        return NextResponse.json({ success: false, error: err.message }, { status: 500 });
     }
 }
