@@ -56,8 +56,7 @@ export async function POST(req: NextRequest) {
             .update({
                 status: 'pending_payout', // Entering 24h quarantine
                 winner_wallet: winnerWallet,
-                prize_tx_signature: prizeTxSignature,
-                drawn_at: new Date().toISOString()
+                prize_tx_signature: prizeTxSignature
             })
             .eq('id', raffleId);
 

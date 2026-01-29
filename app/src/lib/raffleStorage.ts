@@ -158,22 +158,28 @@ export const buyTickets = async (data: {
   quantity: number;
   txSignature: string;
 }): Promise<boolean> => {
-  const { error } = await supabase
-    .from('tickets')
-    .insert({
-      raffle_id: data.raffleId,
-      user_wallet: data.userWallet,
-      quantity: data.quantity,
-      tx_signature: data.txSignature,
-      is_verified: false // Server will verify later
+  try {
+    const response = await fetch("/api/raffle/ticket/buy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
     });
 
-  if (error) {
-    console.error("[buyTickets] Error:", error);
+    const result = await response.json();
+    if (!response.ok) {
+      console.error("[buyTickets] API Error:", result.error);
+      return false;
+    }
+
+    // Trigger local update event
+    window.dispatchEvent(new Event("rafflesUpdated"));
+    window.dispatchEvent(new Event("participantsUpdated"));
+
+    return true;
+  } catch (err: any) {
+    console.error("[buyTickets] Fetch Error:", err);
     return false;
   }
-
-  return true;
 };
 
 export const deleteRaffle = async (id: string, adminWallet?: string): Promise<{ success: boolean; error?: string }> => {

@@ -52,8 +52,7 @@ export async function GET(req: NextRequest) {
                 await supabaseAdmin.from('raffles').update({
                     status: 'pending_payout',
                     winner_wallet: winnerWallet,
-                    prize_tx_signature: signature,
-                    drawn_at: new Date().toISOString()
+                    prize_tx_signature: signature
                 }).eq('id', raffle.id);
 
                 results.push({ id: raffle.id, status: 'drawn', winner: winnerWallet });
