@@ -43,6 +43,18 @@ export const getHotWalletKeypair = () => {
                 const decoded = decodeBase58(secretKeyString);
                 if (decoded.length === 64) {
                     return Keypair.fromSecretKey(decoded);
+                } else if (decoded.length === 65) {
+                    // Sometimes bs58 decoding + environment weirdness adds a byte.
+                    // Try simply slicing it.
+                    try {
+                        return Keypair.fromSecretKey(decoded.slice(0, 64));
+                    } catch (e) {
+                        try {
+                            return Keypair.fromSecretKey(decoded.slice(1, 65));
+                        } catch (e2) {
+                            lastError = `Base58 decode length 65 correction failed.`;
+                        }
+                    }
                 } else {
                     lastError = `Base58 decode length mismatch: ${decoded.length} (expected 64).`;
                 }
