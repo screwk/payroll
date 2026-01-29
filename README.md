@@ -294,3 +294,5 @@ NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
 ---
 
 Built with ❤️ on Solana.
+< ! - -   r e d e p l o y   t r i g g e r :   u p d a t e   e n v   k e y s   - - >  
+ 
