@@ -24,7 +24,7 @@ export default function AdminPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [existingRaffles, setExistingRaffles] = useState<StoredRaffle[]>([]);
   const [participants, setParticipants] = useState<(Participant & { rafflePrize?: number })[]>([]);
-  const [activeTab, setActiveTab] = useState<"create" | "raffles" | "history" | "pending" | "financial">("create");
+  const [activeTab, setActiveTab] = useState<"create" | "raffles" | "history" | "pending" | "winners" | "financial">("create");
   const [formData, setFormData] = useState({
     prizeAmount: "",
     ticketPrice: "",
@@ -249,12 +249,13 @@ export default function AdminPage() {
                 const tabs = [
                   { key: "create", label: "Create", icon: "+" },
                   { key: "raffles", label: `Live (${existingRaffles.filter(r => r.status === 'active').length})`, icon: "🎯" },
-                  { key: "history", label: `Ended (${existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length})`, icon: "🏆" },
-                  { key: "pending", label: `Awaiting Deposit (${existingRaffles.filter(r => r.status === 'waiting_deposit').length})`, icon: "⏳" },
+                  { key: "history", label: `To Draw (${existingRaffles.filter(r => r.status === 'active' && new Date(r.endTime).getTime() <= Date.now()).length})`, icon: "⌛" },
+                  { key: "winners", label: `Winners (${existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length})`, icon: "🏆" },
+                  { key: "pending", label: `Waiting (${existingRaffles.filter(r => r.status === 'waiting_deposit').length})`, icon: "💰" },
                 ];
 
                 if (isOwner) {
-                  tabs.push({ key: "financial", label: "Revenue", icon: "💰" });
+                  tabs.push({ key: "financial", label: "Revenue", icon: "📊" });
                 }
 
                 return tabs;
@@ -378,13 +379,38 @@ export default function AdminPage() {
               {/* LIVE RAFFLES TAB */}
               {activeTab === "raffles" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
-                  <h3 className="font-display font-bold text-lg mb-4">Active Raffles</h3>
+                  <h3 className="font-display font-bold text-lg mb-4">Active & Live</h3>
                   <div className="space-y-3">
-                    {existingRaffles.filter(r => r.status === 'active').map(raffle => (
+                    {existingRaffles.filter(r => r.status === 'active' && new Date(r.endTime).getTime() > Date.now()).map(raffle => (
                       <div key={raffle.id} className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-between">
                         <div>
                           <p className="font-bold">{raffle.title || "Untitled Raffle"}</p>
                           <p className="text-xs text-orange-600 font-bold">{raffle.prizeAmount} SOL Prize</p>
+                          <p className="text-[10px] text-gray-500">{raffle.ticketsSold} tickets sold</p>
+                          <p className="text-[9px] text-gray-400 mt-1">Ends: {new Date(raffle.endTime).toLocaleString()}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {existingRaffles.filter(r => r.status === 'active' && new Date(r.endTime).getTime() > Date.now()).length === 0 && <p className="text-center py-6 text-gray-500">No live raffles currently.</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* TO DRAW / ENDED TAB */}
+              {activeTab === "history" && (
+                <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
+                  <h3 className="font-display font-bold text-lg mb-4">Ended & Ready to Draw</h3>
+                  <div className="space-y-4">
+                    {existingRaffles.filter(r => r.status === 'active' && new Date(r.endTime).getTime() <= Date.now()).map(raffle => (
+                      <div key={raffle.id} className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-between">
+                        <div>
+                          <p className="font-bold">{raffle.title} ({raffle.prizeAmount} SOL)</p>
+                          <p className="text-xs text-amber-700 font-bold">Expired: {new Date(raffle.endTime).toLocaleString()}</p>
                           <p className="text-[10px] text-gray-500">{raffle.ticketsSold} tickets sold</p>
                         </div>
                         <div className="flex gap-2">
@@ -394,51 +420,53 @@ export default function AdminPage() {
                               method: "POST",
                               body: JSON.stringify({ raffleId: raffle.id, adminWallet: publicKey?.toString() })
                             });
+                            const data = await res.json();
                             if (res.ok) { alert("Winner drawn!"); loadData(); }
-                            else { alert("Error drawing winner."); }
-                          }} className="px-3 py-1 bg-orange border border-orange text-white text-[10px] rounded hover:bg-orange-bright font-bold">
-                            Draw Now
-                          </button>
-                          <button onClick={() => handleDeleteRaffle(raffle.id)} className="p-2 text-red-500 hover:bg-red-50 rounded">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            else { alert("Error: " + (data.error || "Unknown error")); }
+                          }} className="px-4 py-2 bg-orange text-white text-xs rounded-lg hover:bg-orange-bright font-bold shadow-sm">
+                            Draw Now 🎲
                           </button>
                         </div>
                       </div>
                     ))}
-                    {existingRaffles.filter(r => r.status === 'active').length === 0 && <p className="text-center py-6 text-gray-500">No live raffles.</p>}
+                    {existingRaffles.filter(r => r.status === 'active' && new Date(r.endTime).getTime() <= Date.now()).length === 0 && <p className="text-center py-6 text-gray-500">No raffles pending draw.</p>}
                   </div>
                 </div>
               )}
 
-              {/* ENDED TAB */}
-              {activeTab === "history" && (
+              {/* WINNERS TAB */}
+              {activeTab === "winners" && (
                 <div className="p-6 bg-white border border-gray-200 rounded-2xl shadow-xl">
-                  <h3 className="font-display font-bold text-lg mb-4">Ended Raffles</h3>
+                  <h3 className="font-display font-bold text-lg mb-4">Recent Winners</h3>
                   <div className="space-y-4">
-                    {existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout', 'refunded'].includes(r.status)).map(raffle => (
-                      <div key={raffle.id} className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="font-bold">{raffle.title} ({raffle.prizeAmount} SOL)</p>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${raffle.status === 'completed' ? 'bg-emerald-500 text-white' : 'bg-orange-500 text-white'
-                            }`}>{raffle.status}</span>
+                    {existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).map(raffle => (
+                      <div key={raffle.id} className="p-4 rounded-xl border border-emerald-100 bg-emerald-50/50">
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-bold text-emerald-900">{raffle.title}</p>
+                            <p className="text-[10px] text-emerald-600 font-bold">{raffle.prizeAmount} SOL Prize</p>
+                          </div>
+                          <span className="text-[9px] px-2 py-1 bg-emerald-200 text-emerald-800 rounded-lg font-bold uppercase">{raffle.status}</span>
                         </div>
-                        <p className="text-[10px] text-gray-500">Winner: {raffle.winnerWallet ? shortenAddress(raffle.winnerWallet, 8) : "N/A"}</p>
-                        <div className="mt-2 flex gap-2">
-                          {raffle.status === 'pending_payout' && isOwner && (
-                            <button onClick={async () => {
-                              const res = await fetch("/api/raffle/payout", {
-                                method: "POST",
-                                body: JSON.stringify({ raffleId: raffle.id, ownerWallet: publicKey?.toString() })
-                              });
-                              if (res.ok) { alert("Payout successful!"); loadData(); }
-                              else { alert("Payout failed."); }
-                            }} className="text-[10px] bg-emerald-600 text-white px-2 py-1 rounded font-bold">
-                              Release Payout (Lucro/Prejuízo)
-                            </button>
-                          )}
+                        <div className="p-3 bg-white rounded-lg border border-emerald-100 mb-3">
+                          <p className="text-[10px] text-gray-400 uppercase mb-1">Winner Address</p>
+                          <p className="font-mono text-xs text-emerald-700 break-all">{raffle.winnerWallet}</p>
                         </div>
+                        {raffle.status === 'pending_payout' && isOwner && (
+                          <button onClick={async () => {
+                            const res = await fetch("/api/raffle/payout", {
+                              method: "POST",
+                              body: JSON.stringify({ raffleId: raffle.id, ownerWallet: publicKey?.toString() })
+                            });
+                            if (res.ok) { alert("Payout successful!"); loadData(); }
+                            else { alert("Payout failed."); }
+                          }} className="w-full py-2 bg-emerald-600 text-white text-[10px] rounded-lg font-bold hover:bg-emerald-700 transition-colors">
+                            Verify & Close Raffle (Finalize)
+                          </button>
+                        )}
                       </div>
                     ))}
+                    {existingRaffles.filter(r => ['drawn', 'completed', 'pending_payout'].includes(r.status)).length === 0 && <p className="text-center py-6 text-gray-500">No winners declared yet.</p>}
                   </div>
                 </div>
               )}
@@ -462,8 +490,8 @@ export default function AdminPage() {
                             onClick={() => handleForceActivate(raffle.id)}
                             disabled={isForcing === raffle.id}
                             className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${isForcing === raffle.id
-                                ? "bg-gray-200 text-gray-400"
-                                : "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                              ? "bg-gray-200 text-gray-400"
+                              : "bg-orange-100 text-orange-700 hover:bg-orange-200"
                               }`}
                           >
                             {isForcing === raffle.id ? "Activating..." : "Force Live ⚡"}

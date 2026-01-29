@@ -37,11 +37,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Failed to fetch participants" }, { status: 500 });
         }
 
-        if (participants.length < 2) {
-            console.error(`[Draw API] Not enough participants for raffle ${raffleId}. Count: ${participants.length}`);
+        if (participants.length < 1) {
+            console.error(`[Draw API] No participants found for raffle ${raffleId}.`);
             return NextResponse.json({
-                error: `Not enough participants to draw (min 2). Found only ${participants.length}.`,
-                found: participants.length
+                error: "Zero participants. No one to draw from.",
+                code: "EMPTY_RAFFLE"
             }, { status: 400 });
         }
 

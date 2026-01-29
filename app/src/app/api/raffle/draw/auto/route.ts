@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
                 .select('*')
                 .eq('raffle_id', raffle.id);
 
-            if (!participants || participants.length < 2) {
+            if (!participants || participants.length < 1) {
                 // Handle refund or cancellation logic if needed
                 // For now, just skip or mark as awaiting more buyers (extension logic could go here)
                 continue;
