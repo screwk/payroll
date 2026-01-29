@@ -37,9 +37,9 @@ export async function POST(req: NextRequest) {
 
         console.log(`[API Delete] Admin ${adminWallet} is deleting raffle ${raffleId}`);
 
-        // 3. Delete Participants first
+        // 3. Delete Tickets first
         const { error: partError, count: partCount } = await supabaseAdmin
-            .from('participants')
+            .from('tickets')
             .delete({ count: 'exact' })
             .eq('raffle_id', raffleId);
 

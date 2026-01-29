@@ -164,21 +164,25 @@ export const buyTickets = async (data: {
 };
 
 export const deleteRaffle = async (id: string, adminWallet?: string): Promise<{ success: boolean; error?: string }> => {
-  if (adminWallet && !ADMIN_WALLETS.includes(adminWallet)) {
-    return { success: false, error: "Unauthorized" };
+  if (!adminWallet) return { success: false, error: "Wallet not connected" };
+
+  try {
+    const response = await fetch("/api/raffle/delete", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ raffleId: id, adminWallet }),
+    });
+
+    const result = await response.json();
+    if (!response.ok) {
+      return { success: false, error: result.error || "Failed to delete from API" };
+    }
+
+    return { success: true };
+  } catch (err: any) {
+    console.error("[deleteRaffle] API Error:", err);
+    return { success: false, error: err.message };
   }
-
-  const { error } = await supabase
-    .from('raffles')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error("[deleteRaffle] Error:", error);
-    return { success: false, error: error.message };
-  }
-
-  return { success: true };
 };
 
 // ============ DISPLAY HELPERS ============
