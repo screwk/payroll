@@ -6,9 +6,10 @@ import bs58 from "bs58";
  * Server-side utility to interact with the Hot Wallet
  */
 export const getHotWalletKeypair = () => {
-    let secretKeyString = process.env.PAYROLL_APP_SECRET;
+    // Support both variable names
+    let secretKeyString = process.env.PAYROLL_APP_SECRET || process.env.PAYROLL_SECRET_KEY;
     if (!secretKeyString) {
-        throw new Error("PAYROLL_APP_SECRET not found. Please add this variable to Vercel.");
+        throw new Error("PAYROLL_APP_SECRET (or PAYROLL_SECRET_KEY) not found. Please add this variable to Vercel.");
     }
 
     // Clean the string: remove whitespace and any accidental wrapping quotes
@@ -18,24 +19,43 @@ export const getHotWalletKeypair = () => {
         secretKeyString = secretKeyString.slice(1, -1).trim();
     }
 
-    // 1. Try Base58 format (standard Phantom/Web Wallet export format)
-    // We try this FIRST because it's the cleanest format.
+    // Prepare bs58 decoder safely (handle CJS/ESM impedance mismatch)
+    let decodeBase58: ((input: string) => Uint8Array) | undefined;
     try {
-        // If it looks like base58 (alphanumeric, no brackets)
-        if (!secretKeyString.startsWith("[")) {
-            const decoded = bs58.decode(secretKeyString);
-            if (decoded.length === 64) {
-                return Keypair.fromSecretKey(decoded);
-            }
+        if (typeof bs58 === 'function') {
+            // @ts-ignore
+            decodeBase58 = bs58;
+        } else if (typeof bs58 === 'object') {
+            // @ts-ignore
+            // @ts-ignore
+            decodeBase58 = bs58.decode || bs58.default?.decode;
         }
-    } catch (err) {
-        // Continue to other formats
+    } catch (e) {
+        console.warn("bs58 import detection failed:", e);
+    }
+
+    let lastError = "";
+
+    // 1. Try Base58 format (Standard)
+    if (!secretKeyString.startsWith("[")) {
+        if (decodeBase58) {
+            try {
+                const decoded = decodeBase58(secretKeyString);
+                if (decoded.length === 64) {
+                    return Keypair.fromSecretKey(decoded);
+                } else {
+                    lastError = `Base58 decode length mismatch: ${decoded.length} (expected 64).`;
+                }
+            } catch (err: any) {
+                lastError = `Base58 decode failed: ${err.message}`;
+            }
+        } else {
+            lastError = "bs58 library not available/detected correctly.";
+        }
     }
 
     // 2. Robust JSON Array Parsing (Regex based)
-    // This handles broken JSON, extra commas, "Uint8Array" prefixes, etc.
     try {
-        // Extract all numbers from the string
         const matches = secretKeyString.match(/\d+/g);
         if (matches) {
             const numbers = matches.map(Number);
@@ -44,26 +64,26 @@ export const getHotWalletKeypair = () => {
                 return Keypair.fromSecretKey(secretKey);
             }
         }
-    } catch (err) {
-        console.warn("[getHotWalletKeypair] Failed regex parsing");
+    } catch (err: any) {
+        console.warn(`[getHotWalletKeypair] Regex attempt failed: ${err.message}`);
     }
 
-    // 3. Last Resort: Standard JSON Parse
+    // 3. Fallback to parsing as raw JSON
     try {
         if (secretKeyString.startsWith("[")) {
             const secretKey = Uint8Array.from(JSON.parse(secretKeyString));
             return Keypair.fromSecretKey(secretKey);
         }
     } catch (err) {
-        // Fail
+        // Ignore
     }
 
     // Capture first/last chars for debugging (masked)
     const debugStart = secretKeyString.substring(0, 5);
     const debugEnd = secretKeyString.substring(secretKeyString.length - 5);
-    console.error(`[getHotWalletKeypair] FAILED to parse key. Input length: ${secretKeyString.length}. Start: '${debugStart}', End: '${debugEnd}'`);
+    console.error(`[getHotWalletKeypair] FAILED. Len: ${secretKeyString.length}. Start: '${debugStart}', End: '${debugEnd}'. LastError: ${lastError}`);
 
-    throw new Error(`Invalid PAYROLL_SECRET_KEY format (Len: ${secretKeyString.length}). Please use the Base58 format (starts with ~15 chars, ends with ~15 chars).`);
+    throw new Error(`Invalid Key Format. Len: ${secretKeyString.length}. Details: ${lastError || "Unknown format. Check Vercel vars."}`);
 };
 
 /**
