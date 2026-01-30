@@ -56,34 +56,23 @@ export async function POST(req: NextRequest) {
         const randomIndex = Math.floor(Math.random() * ticketPool.length);
         const winnerWallet = ticketPool[randomIndex];
 
-        // 5. Send prize from Hot Wallet
-        let prizeTxSignature: string | null = null;
-        try {
-            prizeTxSignature = await sendPrize(winnerWallet, raffle.prize_amount);
-        } catch (err: any) {
-            console.error("[Draw API] Payout error:", err);
-            return NextResponse.json({ error: "Failed to send prize: " + err.message }, { status: 500 });
-        }
-
-        // 6. Update Database using supabaseAdmin
+        // 5. Update Database using supabaseAdmin (Set to 'drawn', admin will pay later)
         const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({
-                status: 'pending_payout',
-                winner_wallet: winnerWallet,
-                prize_tx_signature: prizeTxSignature
+                status: 'drawn',
+                winner_wallet: winnerWallet
             })
             .eq('id', raffleId);
 
         if (updateError) {
             console.error("[Draw API] Database update error:", updateError);
-            return NextResponse.json({ error: "Database update failed after payout" }, { status: 500 });
+            return NextResponse.json({ error: "Database update failed after picking winner" }, { status: 500 });
         }
 
         return NextResponse.json({
             success: true,
-            winner: winnerWallet,
-            signature: prizeTxSignature
+            winner: winnerWallet
         });
 
     } catch (err: any) {

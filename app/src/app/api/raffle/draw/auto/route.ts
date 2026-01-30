@@ -45,19 +45,16 @@ export async function GET(req: NextRequest) {
 
             const winnerWallet = ticketPool[Math.floor(Math.random() * ticketPool.length)];
 
-            // Payout Prize
+            // Set to drawn (Admin will payout manually in the Winners tab)
             try {
-                const signature = await sendPrize(winnerWallet, raffle.prize_amount);
-
                 await supabaseAdmin.from('raffles').update({
-                    status: 'pending_payout',
+                    status: 'drawn',
                     winner_wallet: winnerWallet,
-                    prize_tx_signature: signature
                 }).eq('id', raffle.id);
 
                 results.push({ id: raffle.id, status: 'drawn', winner: winnerWallet });
             } catch (err: any) {
-                console.error(`Failed auto-draw for ${raffle.id}:`, err);
+                console.error(`Failed auto-draw DB update for ${raffle.id}:`, err);
             }
         }
 
