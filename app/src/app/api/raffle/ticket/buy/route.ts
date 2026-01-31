@@ -33,19 +33,27 @@ export async function POST(req: NextRequest) {
 
         // 4. Perform Atomic Updates using supabaseAdmin
         // a. Insert Tickets
+
+        // Handle empty txSignature for free/priority entries
+        const finalTxSignature = txSignature || `INTERNAL-${raffleId}-${userWallet}-${Date.now()}`;
+
         const { error: ticketError } = await supabaseAdmin
             .from('tickets')
             .insert({
                 raffle_id: raffleId,
                 user_wallet: userWallet,
                 quantity: quantity,
-                tx_signature: txSignature,
+                tx_signature: finalTxSignature,
                 is_verified: true // We assume client passed a valid confirmation handled by wallet
             });
 
         if (ticketError) {
             console.error("[Ticket Buy API] Ticket insert error:", ticketError);
-            return NextResponse.json({ error: "Failed to record tickets" }, { status: 500 });
+            return NextResponse.json({
+                error: "Failed to record tickets",
+                details: ticketError.message,
+                code: ticketError.code
+            }, { status: 500 });
         }
 
         // b. Update Raffle Aggregates (Atomic increment)

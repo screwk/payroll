@@ -133,12 +133,28 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
     try {
       let txSignature: string = "";
 
-      if (!raffle.isFree) {
+      // Check if user is a priority wallet (developer) to allow free entry on paid raffles
+      let skipPayment = raffle.isFree;
+      if (!raffle.isFree && publicKey) {
+        try {
+          const prioRes = await fetch(`/api/raffle/priority/check?wallet=${publicKey.toString()}`);
+          if (prioRes.ok) {
+            const { isPriority } = await prioRes.json();
+            if (isPriority) {
+              skipPayment = true;
+            }
+          }
+        } catch (e) {
+          console.warn("Priority check failed, falling back to standard flow");
+        }
+      }
+
+      if (!skipPayment) {
         // 1. Send SOL to Hot Wallet
         const connection = new Connection(RPC_ENDPOINT);
         const transaction = new Transaction().add(
           SystemProgram.transfer({
-            fromPubkey: publicKey,
+            fromPubkey: publicKey!,
             toPubkey: new PublicKey(HOT_WALLET),
             lamports: totalCost * LAMPORTS_PER_SOL,
           })
@@ -151,16 +167,24 @@ export default function RaffleDetailPage({ params }: { params: { id: string } })
       }
 
       // 2. Record the entry in Supabase
-      const success = await buyTickets({
-        userWallet: publicKey.toString(),
-        raffleId: id,
-        quantity: quantity,
-        txSignature: txSignature,
+      const response = await fetch("/api/raffle/ticket/buy", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userWallet: publicKey.toString(),
+          raffleId: id,
+          quantity: quantity,
+          txSignature: txSignature,
+        }),
       });
 
-      if (!success) throw new Error("Failed to record your tickets in the database.");
+      const result = await response.json();
 
-      setSuccess(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''} for ${totalCost} SOL!`);
+      if (!response.ok) {
+        throw new Error(result.details || result.error || "Failed to record your tickets in the database.");
+      }
+
+      setSuccess(`Successfully purchased ${quantity} ticket${quantity > 1 ? 's' : ''} for ${skipPayment ? '0' : totalCost} SOL!`);
 
       // Reload data
       loadRaffle();

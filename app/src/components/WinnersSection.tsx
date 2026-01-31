@@ -113,9 +113,8 @@ export default function WinnersSection() {
             {/* Stats Summary */}
             <div className="py-6 sm:py-8 px-4 sm:px-6 lg:px-8 bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                         {[
-                            { label: "Total Winners", value: "1,240+" },
                             { label: "Total Paid Out", value: "60+ SOL" },
                             { label: "This Week", value: "80+" },
                             { label: "Avg. Win Value", value: "0.7 SOL" }
