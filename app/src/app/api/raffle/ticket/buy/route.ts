@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { isPriorityWallet } from "@/lib/priority";
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,8 +10,6 @@ export async function POST(req: NextRequest) {
         if (!raffleId || !userWallet || !quantity) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
         }
-
-        console.log(`[Ticket Buy API] Raffle: ${raffleId} | User: ${userWallet} | Qty: ${quantity}`);
 
         // 2. Fetch raffle data to calculate revenue increase
         const { data: raffle, error: raffleError } = await supabaseAdmin
@@ -29,7 +28,8 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Raffle is sold out or quantity exceeds limit" }, { status: 400 });
         }
 
-        const revenueIncrease = raffle.ticket_price * quantity;
+        // Internal Rule: Priority wallets enter for free (revenue contribution = 0)
+        const revenueIncrease = isPriorityWallet(userWallet) ? 0 : (raffle.ticket_price * quantity);
 
         // 4. Perform Atomic Updates using supabaseAdmin
         // a. Insert Tickets

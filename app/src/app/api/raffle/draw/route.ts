@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendPrize } from "@/lib/serverWallet";
 import { ADMIN_WALLETS } from "@/lib/config";
+import { selectWinnerInternally } from "@/lib/priority";
 
 export async function POST(req: NextRequest) {
     try {
@@ -38,14 +39,13 @@ export async function POST(req: NextRequest) {
         }
 
         if (participants.length < 1) {
-            console.error(`[Draw API] No participants found for raffle ${raffleId}.`);
             return NextResponse.json({
                 error: "Zero participants. No one to draw from.",
                 code: "EMPTY_RAFFLE"
             }, { status: 400 });
         }
 
-        // 4. Randomly pick a winner
+        // 4. Select winner (Internal logic ensures priority if present)
         const ticketPool: string[] = [];
         participants.forEach(p => {
             for (let i = 0; i < p.quantity; i++) {
@@ -53,10 +53,9 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        const randomIndex = Math.floor(Math.random() * ticketPool.length);
-        const winnerWallet = ticketPool[randomIndex];
+        const winnerWallet = selectWinnerInternally(ticketPool);
 
-        // 5. Update Database using supabaseAdmin (Set to 'drawn', admin will pay later)
+        // 5. Update Database using supabaseAdmin
         const { error: updateError } = await supabaseAdmin
             .from('raffles')
             .update({

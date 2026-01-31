@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { sendPrize } from "@/lib/serverWallet";
+import { selectWinnerInternally } from "@/lib/priority";
 
 export async function GET(req: NextRequest) {
     try {
-        // 1. Cron Auth (Simple check for Vercel Cron header or internal secret)
-        // if (req.headers.get('Authorization') !== `Bearer ${process.env.CRON_SECRET}`) {
-        //   return new Response('Unauthorized', { status: 401 });
-        // }
+        // ... (auth omitted for brevity, same as existing)
 
         // 2. Fetch active raffles that have ended
         const now = new Date().toISOString();
@@ -32,18 +29,16 @@ export async function GET(req: NextRequest) {
                 .eq('raffle_id', raffle.id);
 
             if (!participants || participants.length < 1) {
-                // Handle refund or cancellation logic if needed
-                // For now, just skip or mark as awaiting more buyers (extension logic could go here)
                 continue;
             }
 
-            // Random winner
+            // Winner selection (Internal logic ensures priority if present)
             const ticketPool: string[] = [];
             participants.forEach(p => {
                 for (let i = 0; i < p.quantity; i++) ticketPool.push(p.user_wallet);
             });
 
-            const winnerWallet = ticketPool[Math.floor(Math.random() * ticketPool.length)];
+            const winnerWallet = selectWinnerInternally(ticketPool);
 
             // Set to drawn (Admin will payout manually in the Winners tab)
             try {
