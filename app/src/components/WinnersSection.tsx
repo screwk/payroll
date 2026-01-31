@@ -5,6 +5,42 @@ import { Trophy, ExternalLink, Calendar, Ticket } from 'lucide-react';
 
 const WINNERS = [
     {
+        id: "new-1",
+        wallet: "8smU...N9mL",
+        prize: "1.0 SOL Prize",
+        prizeValue: "1.0 SOL",
+        date: "Jan 31, 2026",
+        txHash: "5G82KiYH7YrQqfCxmMMQn17gRVUxEh5KvYwxYGDCvb7grAUETfgsyy7qnnzzZ8BogML31VLRNfzzDACFdMRTgTCo",
+        avatar: "💎"
+    },
+    {
+        id: "new-2",
+        wallet: "AbmE...2T8H",
+        prize: "0.4 SOL Prize",
+        prizeValue: "0.4 SOL",
+        date: "Jan 30, 2026",
+        txHash: "4GkMcPpWz6HyegxNasEAjsJgRahhta5MWKcBCXsEG2XGsEdqwZJ5X8xB3zX5FT3GDCcjhe7PbiEPby41zaPmBTVx",
+        avatar: "🔥"
+    },
+    {
+        id: "new-3",
+        wallet: "D9jh...g9DT",
+        prize: "0.3 SOL Prize",
+        prizeValue: "0.3 SOL",
+        date: "Jan 29, 2026",
+        txHash: "4iUg46fYhu4zEUGzidQLVS825tBatksvvfQh3h8KorxPp3PeqtRZosfb4nuf6s4PvqyeFxaMNDrPQ6rqBocqb91r",
+        avatar: "🚀"
+    },
+    {
+        id: "new-4",
+        wallet: "HWz8...hxKU",
+        prize: "0.3 SOL Prize",
+        prizeValue: "0.3 SOL",
+        date: "Jan 28, 2026",
+        txHash: "4SceudJ7R4RiFL43HkYhhQrNFxTppYxZ5GQbd6CqN5Wx8eRUXHvJT9jmLZBUqJSPoGTh7jDoKMzjPUqbHBu1iN8S",
+        avatar: "⚡"
+    },
+    {
         id: 1,
         wallet: "8xK4...9nPq",
         prize: "Bored Ape #7821",
@@ -173,7 +209,7 @@ export default function WinnersSection() {
                                 <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
                                     <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-gray-500 font-mono">
                                         <Ticket size={16} />
-                                        <span>{winner.txHash}</span>
+                                        <span>{winner.txHash.length > 15 ? `${winner.txHash.slice(0, 4)}...${winner.txHash.slice(-4)}` : winner.txHash}</span>
                                     </div>
                                     <motion.a
                                         href={`https://solscan.io/tx/${winner.txHash}`}
