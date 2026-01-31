@@ -39,42 +39,6 @@ const WINNERS = [
         date: "Jan 28, 2026",
         txHash: "4SceudJ7R4RiFL43HkYhhQrNFxTppYxZ5GQbd6CqN5Wx8eRUXHvJT9jmLZBUqJSPoGTh7jDoKMzjPUqbHBu1iN8S",
         avatar: "⚡"
-    },
-    {
-        id: 1,
-        wallet: "8xK4...9nPq",
-        prize: "Bored Ape #7821",
-        prizeValue: "85 SOL",
-        date: "Jan 26, 2024",
-        txHash: "5kX9...mN3r",
-        avatar: "🦍"
-    },
-    {
-        id: 2,
-        wallet: "3mRt...7vKs",
-        prize: "100 SOL Jackpot",
-        prizeValue: "100 SOL",
-        date: "Jan 25, 2024",
-        txHash: "8nL2...pQ4w",
-        avatar: "💰"
-    },
-    {
-        id: 3,
-        wallet: "9pLw...2xBn",
-        prize: "DeGods #1337",
-        prizeValue: "45 SOL",
-        date: "Jan 24, 2024",
-        txHash: "2vM8...kR7t",
-        avatar: "👻"
-    },
-    {
-        id: 4,
-        wallet: "5kNr...8mTx",
-        prize: "Mad Lads #666",
-        prizeValue: "32 SOL",
-        date: "Jan 23, 2024",
-        txHash: "7wP3...nS9q",
-        avatar: "😈"
     }
 ];
 
