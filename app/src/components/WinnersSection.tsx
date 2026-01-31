@@ -115,10 +115,10 @@ export default function WinnersSection() {
                 <div className="max-w-7xl mx-auto">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
                         {[
-                            { label: "Total Winners", value: "12,847" },
-                            { label: "Total Paid Out", value: "700K+ SOL" },
-                            { label: "This Week", value: "234" },
-                            { label: "Avg. Win Value", value: "54.5 SOL" }
+                            { label: "Total Winners", value: "1,240+" },
+                            { label: "Total Paid Out", value: "60+ SOL" },
+                            { label: "This Week", value: "80+" },
+                            { label: "Avg. Win Value", value: "0.7 SOL" }
                         ].map((stat, i) => (
                             <motion.div
                                 key={stat.label}
